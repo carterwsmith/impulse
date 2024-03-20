@@ -1,5 +1,20 @@
 ///
 ///
+/// SESSION MANAGEMENT
+///
+///
+
+let sessionUUID = sessionStorage.getItem('sessionai_sessionUUID');
+if (!sessionUUID) {
+  sessionUUID = crypto.randomUUID();
+  sessionStorage.setItem('sessionai_sessionUUID', sessionUUID);
+}
+
+const currentTime = Date.now()
+const pageVisitToken = `${sessionUUID}-${currentTime}`;
+
+///
+///
 /// SOCKETIO CLIENT
 ///
 ///
@@ -12,7 +27,7 @@ document.head.appendChild(socketioScript);
 var socket;
 socketioScript.onload = function() {
   socket = io('http://127.0.0.1:5000');
-  console.log('socket.io connected');
+  //console.log('socket.io connected');
   socket.on('message', (data) => {
     displayAlert(data);
   });
@@ -42,7 +57,13 @@ function handleMouseMove(event) {
   
 function getMousePosition() {
     //console.log(mousePos);
-    return mousePos;
+    let ts = Date.now()
+    socket.emit('mouseUpdate', {
+      session_id: sessionUUID, 
+      pageVisitToken: pageVisitToken,
+      mousePos: mousePos,
+      recordedAt: ts, 
+    });
 }
 
 ///
@@ -71,19 +92,23 @@ function logPageVisit(pagePath) {
   // Record the end of the previous page session if necessary
   //
   if (pageVisits[0] && pageVisits[0].endTime === null) {
-    const currentTime = Date.now();
     const timeSpent = currentTime - pageVisits[0].startTime; // Time spent in milliseconds
     pageVisits[0].endTime = currentTime;
     pageVisits[0].msElapsed = timeSpent;
+
+    socket.emit('pageVisitEnd', {
+      pageVisitToken: pageVisits[0].pageVisitToken,
+      endTime: currentTime,
+    })
     //console.log('Logged visit', pageVisits[0].path, timeSpent)
   }
 
   //
   // Record a new page session
   //
-  const currentTime = Date.now();
   newPageSession = {
     path: pagePath,
+    pageVisitToken: pageVisitToken,
     startTime: currentTime,
     endTime: null,
     msElapsed: null,
@@ -99,7 +124,12 @@ function logPageVisit(pagePath) {
   //
   // Emit the page visit data to the backend
   //
-  socket.emit('interaction_data', pageVisits);
+  socket.emit('pageVisit', {
+    session_id: sessionUUID,
+    startTime: currentTime, 
+    pageVisitToken: pageVisitToken,
+    pagePath: pagePath
+  });
 }
 
 ///
