@@ -1,5 +1,29 @@
 ///
 ///
+/// SOCKETIO CLIENT
+///
+///
+
+var socketioScript = document.createElement('script');
+socketioScript.src = 'https://cdn.socket.io/4.7.5/socket.io.min.js';
+socketioScript.crossOrigin = 'anonymous'
+document.head.appendChild(socketioScript);
+
+var socket;
+socketioScript.onload = function() {
+  socket = io('http://127.0.0.1:5000');
+  console.log('socket.io connected');
+  socket.on('message', (data) => {
+    displayAlert(data);
+  });
+}
+
+function displayAlert(data) {
+  alert(data);
+}
+
+///
+///
 /// MOUSE POSITION
 ///
 ///
@@ -71,6 +95,11 @@ function logPageVisit(pagePath) {
   // Store the page visit data in sessionStorage
   //
   sessionStorage.setItem('sessionai_pageVisits', JSON.stringify(pageVisits));
+
+  //
+  // Emit the page visit data to the backend
+  //
+  socket.emit('interaction_data', pageVisits);
 }
 
 ///

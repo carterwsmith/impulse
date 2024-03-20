@@ -1,8 +1,10 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 from flask_socketio import SocketIO, emit
 
 app = Flask(__name__)
-socketio = SocketIO(app)
+CORS(app)
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 @socketio.on('connect')
 def handle_connect():
@@ -11,7 +13,7 @@ def handle_connect():
 @socketio.on('interaction_data')
 def handle_interaction_data(data):
     res = process(data)
-    emit('example', res)
+    emit('message', res)
 
 def process(data):
     # Do some processing
