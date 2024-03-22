@@ -28,7 +28,7 @@ var socket;
 socketioScript.onload = function() {
   socket = io('http://127.0.0.1:5000');
   //console.log('socket.io connected');
-  socket.on('message', (data) => {
+  socket.on('llmResponse', (data) => {
     displayAlert(data);
   });
 }

@@ -41,6 +41,17 @@ CREATE TABLE IF NOT EXISTS MouseMovements (
 )
 ''')
 
+# Create table for LLM Responses
+cursor.execute('''
+CREATE TABLE IF NOT EXISTS LLMResponses (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id TEXT NOT NULL,
+    response TEXT NOT NULL,
+    recorded_at TEXT NOT NULL,
+    FOREIGN KEY (session_id) REFERENCES Sessions(id)
+)
+''')
+
 # Commit the changes and close the connection
 conn.commit()
 conn.close()
