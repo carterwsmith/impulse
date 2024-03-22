@@ -21,8 +21,8 @@ def db_connection():
 def handle_mouse_update(data):
     conn = db_connection()
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO MouseMovements (session_id, pagevisit_token, position_x, position_y, recorded_at) VALUES (?, ?, ?, ?, ?)",
-                    (data['session_id'], data['pageVisitToken'], data['mousePos']['x'], data['mousePos']['y'], data['recordedAt']))
+    cursor.execute("INSERT INTO MouseMovements (session_id, pagevisit_token, position_x, position_y, text_or_tag_hovered, recorded_at) VALUES (?, ?, ?, ?, ?, ?)",
+                    (data['session_id'], data['pageVisitToken'], data['mousePos']['x'], data['mousePos']['y'], data['hovered'], data['recordedAt']))
     conn.commit()
     conn.close()
 

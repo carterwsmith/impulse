@@ -58,11 +58,21 @@ function handleMouseMove(event) {
 function getMousePosition() {
     //console.log(mousePos);
     let ts = Date.now()
+    
+    var elementMouseIsOver = document.elementFromPoint(mousePos['x'], mousePos['y']);
+    let textOrTagHovered;
+    if (elementMouseIsOver.tagName.toLowerCase() === 'body' || elementMouseIsOver.innerText === "") {
+        textOrTagHovered = `<${elementMouseIsOver.tagName.toLowerCase()}>`
+    } else {
+        textOrTagHovered = elementMouseIsOver.innerText
+    }
+
     socket.emit('mouseUpdate', {
       session_id: sessionUUID, 
       pageVisitToken: pageVisitToken,
       mousePos: mousePos,
       recordedAt: ts, 
+      hovered: textOrTagHovered,
     });
 }
 

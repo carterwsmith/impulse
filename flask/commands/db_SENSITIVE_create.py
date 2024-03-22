@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS MouseMovements (
     pagevisit_token TEXT NOT NULL,
     position_x INTEGER NOT NULL,
     position_y INTEGER NOT NULL,
+    text_or_tag_hovered TEXT NOT NULL,
     recorded_at TEXT NOT NULL,
     FOREIGN KEY (session_id) REFERENCES Sessions(id),
     FOREIGN KEY (pagevisit_token) REFERENCES PageVisits(pagevisit_token)
