@@ -7,7 +7,7 @@ import jsmin
 def build_extension():
     # Create directory for the extension
     extension_name = "impulse_chrome"
-    extension_dir = os.path.join(os.getcwd(), extension_name)
+    extension_dir = os.path.join(os.getcwd(), f'chrome/{extension_name}')
     os.makedirs(extension_dir, exist_ok=True)
     
     # Create manifest.json
