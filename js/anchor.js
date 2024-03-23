@@ -62,10 +62,12 @@ function getMousePosition() {
     
     var elementMouseIsOver = document.elementFromPoint(mousePos['x'], mousePos['y']);
     let textOrTagHovered;
-    if (elementMouseIsOver.tagName.toLowerCase() === 'body' || elementMouseIsOver.innerText === "") {
+    if (elementMouseIsOver && (elementMouseIsOver.tagName.toLowerCase() === 'body' || elementMouseIsOver.innerText === "")) {
         textOrTagHovered = `<${elementMouseIsOver.tagName.toLowerCase()}>`
-    } else {
+    } else if (elementMouseIsOver) {
         textOrTagHovered = elementMouseIsOver.innerText
+    } else {
+      return
     }
 
     socket.emit('mouseUpdate', {
