@@ -24,10 +24,8 @@ def build_extension():
     with open(os.path.join(extension_dir, "manifest.json"), "w") as manifest_file:
         manifest_file.write(json.dumps(manifest, indent=2))
     
-    # Copy JavaScript file
-    js_src = "js/anchor.js"
-    js_dst = os.path.join(extension_dir, "content.js")
-    shutil.copyfile(js_src, js_dst)
+    # Copy JavaScript files
+    shutil.copyfile("js/anchor.js", f"{extension_dir}/content.js")
     
     print(f"Extension '{extension_name}' built successfully.")
 
