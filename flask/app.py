@@ -7,6 +7,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
 
+from constants import ACTIVE_SESSION_TIMEOUT_MINUTES, SOCKETIO_BACKGROUND_TASK_DELAY_SECONDS
 from utils import prompt_claude_session_context
 
 app = Flask(__name__)
@@ -21,7 +22,6 @@ def db_connection():
         print(e)
     return conn
 
-ACTIVE_SESSION_TIMEOUT_MINUTES = 1
 def get_active_sessions(timeout_minutes=ACTIVE_SESSION_TIMEOUT_MINUTES):
     conn = db_connection()
     cursor = conn.cursor()
@@ -56,12 +56,13 @@ def prompt_active_sessions_background_task():
         #print(active_sessions)
         for session_id in active_sessions:
             response, timestamp = prompt_claude_and_store_response(session_id)
-        socketio.sleep(15)
+        socketio.sleep(SOCKETIO_BACKGROUND_TASK_DELAY_SECONDS)
 
 def should_log_mouse_update(session_id, new_x, new_y):
     conn = db_connection()
     cursor = conn.cursor()
-    one_minute_ago = int(time.time() * 1000) - 60000
+    now_ms = int(time.time() * 1000)
+    one_minute_ago = now_ms - (ACTIVE_SESSION_TIMEOUT_MINUTES * 60000)
     cursor.execute("SELECT position_x, position_y FROM MouseMovements WHERE session_id = ? AND CAST(recorded_at AS INTEGER) > ? ORDER BY recorded_at LIMIT 1",
                    (session_id, one_minute_ago))
     last_position = cursor.fetchone()
