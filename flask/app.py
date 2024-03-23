@@ -58,23 +58,36 @@ def prompt_active_sessions_background_task():
             response, timestamp = prompt_claude_and_store_response(session_id)
         socketio.sleep(15)
 
-@socketio.on('mouseUpdate')
-def handle_mouse_update(data):
+def should_log_mouse_update(session_id, new_x, new_y):
     conn = db_connection()
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO MouseMovements (session_id, pagevisit_token, position_x, position_y, text_or_tag_hovered, recorded_at) VALUES (?, ?, ?, ?, ?, ?)",
-                    (data['session_id'], data['pageVisitToken'], data['mousePos']['x'], data['mousePos']['y'], data['hovered'], data['recordedAt']))
-    conn.commit()
-
-    # also check if there is a llmresponse that is not emitted
-    cursor.execute("SELECT response FROM LLMResponses WHERE is_emitted = FALSE AND session_id = ? ORDER BY recorded_at DESC LIMIT 1", (data['session_id'],))
-    llm_response = cursor.fetchone()
-    if llm_response:
-        emit('llmResponse', llm_response[0])
-        # Set the is_emitted of the most recent llmresponse for that session_id to TRUE
-        cursor.execute("UPDATE LLMResponses SET is_emitted = TRUE WHERE session_id = ? AND id = (SELECT id FROM LLMResponses WHERE session_id = ? ORDER BY recorded_at DESC LIMIT 1)", (data['session_id'], data['session_id']))
-        conn.commit()
+    one_minute_ago = int(time.time() * 1000) - 60000
+    cursor.execute("SELECT position_x, position_y FROM MouseMovements WHERE session_id = ? AND CAST(recorded_at AS INTEGER) > ? ORDER BY recorded_at LIMIT 1",
+                   (session_id, one_minute_ago))
+    last_position = cursor.fetchone()
+    cursor.execute("SELECT COUNT(*) FROM MouseMovements WHERE session_id = ?", (session_id,))
+    has_mouse_movements = cursor.fetchone()[0] > 0
     conn.close()
+    return (not last_position and not has_mouse_movements) or last_position[0] != new_x or last_position[1] != new_y
+
+@socketio.on('mouseUpdate')
+def handle_mouse_update(data):
+    if should_log_mouse_update(data['session_id'], data['mousePos']['x'], data['mousePos']['y']):
+        conn = db_connection()
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO MouseMovements (session_id, pagevisit_token, position_x, position_y, text_or_tag_hovered, recorded_at) VALUES (?, ?, ?, ?, ?, ?)",
+                        (data['session_id'], data['pageVisitToken'], data['mousePos']['x'], data['mousePos']['y'], data['hovered'], data['recordedAt']))
+        conn.commit()
+
+        # also check if there is a llmresponse that is not emitted
+        cursor.execute("SELECT response FROM LLMResponses WHERE is_emitted = FALSE AND session_id = ? ORDER BY recorded_at DESC LIMIT 1", (data['session_id'],))
+        llm_response = cursor.fetchone()
+        if llm_response:
+            emit('llmResponse', llm_response[0])
+            # Set the is_emitted of the most recent llmresponse for that session_id to TRUE
+            cursor.execute("UPDATE LLMResponses SET is_emitted = TRUE WHERE session_id = ? AND id = (SELECT id FROM LLMResponses WHERE session_id = ? ORDER BY recorded_at DESC LIMIT 1)", (data['session_id'], data['session_id']))
+            conn.commit()
+        conn.close()
 
 @socketio.on('pageVisit')
 def handle_page_visit(data):
