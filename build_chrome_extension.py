@@ -2,6 +2,8 @@ import json
 import os
 import shutil
 
+import jsmin
+
 def build_extension():
     # Create directory for the extension
     extension_name = "impulse_chrome"
@@ -24,8 +26,17 @@ def build_extension():
     with open(os.path.join(extension_dir, "manifest.json"), "w") as manifest_file:
         manifest_file.write(json.dumps(manifest, indent=2))
     
-    # Copy JavaScript files
-    shutil.copyfile("js/anchor.js", f"{extension_dir}/content.js")
+    # Minify and copy js file
+    input_file = 'js/anchor.js'
+    output_file = f'{extension_dir}/content.js'
+
+    with open(input_file, 'r') as f:
+        js_code = f.read()
+
+    minified_code = jsmin.jsmin(js_code)
+
+    with open(output_file, 'w') as f:
+        f.write(minified_code)
     
     print(f"Extension '{extension_name}' built successfully.")
 
