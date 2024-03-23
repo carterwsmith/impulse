@@ -22,7 +22,7 @@ def session_to_prompt(session_id, directive=None):
 
     return prompt_str
 
-DEFAULT_DIRECTIVE = "In under 140 characters, summarize what the user is trying to do on this website."
+DEFAULT_DIRECTIVE = "In under 140 characters, summarize what the user is trying to do on this website. Use as much of the data as possible to make your decision. Bias towards the LATER data because it is more recent."
 DEFAULT_SYSTEM_PROMPT = "You are an expert in psychology and consumer behavior."
 def prompt_claude_session_context(session_id, directive=DEFAULT_DIRECTIVE):
     client = _anthropic_client()
