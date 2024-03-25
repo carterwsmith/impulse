@@ -17,7 +17,7 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 def db_connection():
     conn = None
     try:
-        conn = sqlite3.connect('flask/db/app.db')
+        conn = sqlite3.connect('backend/db/app.db')
     except sqlite3.error as e:
         print(e)
     return conn

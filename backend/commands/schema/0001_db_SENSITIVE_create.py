@@ -1,7 +1,7 @@
 import sqlite3
 
 # Connect to the SQLite database. It will be created if it doesn't exist.
-conn = sqlite3.connect('flask/db/app.db')
+conn = sqlite3.connect('backend/db/app.db')
 
 # Create a cursor object using the cursor() method
 cursor = conn.cursor()

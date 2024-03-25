@@ -3,7 +3,7 @@ import sqlite3
 # From a session UUID, extract all of the associated page visits and mouse positions to construct a string suitable for an LLM prompt.
 def session_tostring(session_id):
     # Connect to the SQLite database
-    conn = sqlite3.connect('flask/db/app.db')
+    conn = sqlite3.connect('backend/db/app.db')
     cursor = conn.cursor()
 
     # Get all page visits for the session
