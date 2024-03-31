@@ -7,11 +7,11 @@ def session_tostring(session_id):
     cursor = conn.cursor()
 
     # Get all page visits for the session
-    cursor.execute('SELECT pagevisit_token, page_path, start_time, end_time FROM PageVisits WHERE session_id = ?', (session_id,))
+    cursor.execute('SELECT pagevisit_token, page_path, start_time, end_time FROM app_pagevisits WHERE session_id = ?', (session_id,))
     page_visits = cursor.fetchall()
 
     # Get all mouse positions for the session
-    cursor.execute('SELECT pagevisit_token, position_x, position_y, text_or_tag_hovered, recorded_at FROM MouseMovements WHERE session_id = ?', (session_id,))
+    cursor.execute('SELECT pagevisit_token_id, position_x, position_y, text_or_tag_hovered, recorded_at FROM app_mousemovements WHERE session_id = ?', (session_id,))
     mouse_positions = cursor.fetchall()
 
     # Close the connection
