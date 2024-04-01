@@ -1,8 +1,10 @@
+from django.contrib.auth.models import User
 from django.db import models
 from django.core.exceptions import ValidationError
 
 class Sessions(models.Model):
     id = models.TextField(primary_key=True)
+    django_user = models.ForeignKey(User, on_delete=models.CASCADE)
 
 class PageVisits(models.Model):
     session = models.ForeignKey(Sessions, on_delete=models.CASCADE)
@@ -28,6 +30,8 @@ class LLMResponses(models.Model):
     is_emitted = models.BooleanField(default=False)
 
 class Promotions(models.Model):
+    django_user = models.ForeignKey(User, on_delete=models.CASCADE)
+
     promotion_name = models.CharField(max_length=100)
     display_title = models.CharField(max_length=100)
     display_description = models.TextField()
@@ -40,3 +44,8 @@ class Promotions(models.Model):
         if self.is_discount and (self.discount_percent is None and self.discount_dollars is None):
             raise ValidationError("Either discount_percent or discount_dollars must be not null if is_discount is True")
         super(Promotions, self).save(*args, **kwargs)
+
+class ImpulseUser(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    root_domain = models.CharField(max_length=255, null=True, blank=True)
+    is_domain_configured = models.BooleanField(default=False)
