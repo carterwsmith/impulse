@@ -1,4 +1,5 @@
 from django.db import models
+from django.core.exceptions import ValidationError
 
 class Sessions(models.Model):
     id = models.TextField(primary_key=True)
@@ -25,3 +26,17 @@ class LLMResponses(models.Model):
     response = models.TextField()
     recorded_at = models.TextField()
     is_emitted = models.BooleanField(default=False)
+
+class Promotions(models.Model):
+    promotion_name = models.CharField(max_length=100)
+    display_title = models.CharField(max_length=100)
+    display_description = models.TextField()
+
+    is_discount = models.BooleanField(default=False)
+    discount_percent = models.FloatField(null=True, blank=True)
+    discount_dollars = models.FloatField(null=True, blank=True)
+
+    def save(self, *args, **kwargs):
+        if self.is_discount and (self.discount_percent is None and self.discount_dollars is None):
+            raise ValidationError("Either discount_percent or discount_dollars must be not null if is_discount is True")
+        super(Promotions, self).save(*args, **kwargs)
