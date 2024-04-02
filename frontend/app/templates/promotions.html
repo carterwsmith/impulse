@@ -55,6 +55,7 @@
                 fields.forEach(function(fieldId) {
                     var field = document.getElementById(fieldId);
                     field.style.display = 'none';
+                    field.value = ''; // Clear the field value
                     var label = document.querySelector('label[for="' + fieldId + '"]');
                     if (label) {
                         label.style.display = 'none';

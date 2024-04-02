@@ -52,20 +52,23 @@ class Promotions(models.Model):
 
         # Case 1: Promotion is NOT AI generated
         if not self.is_ai_generated:
-            if any(field is not None for field in ai_fields):
+            if any(field not in (None, '') for field in ai_fields):
                 raise ValidationError("AI fields must be blank for non-AI generated promotions.")
             required_fields = [self.promotion_name, self.display_title, self.display_description]
             if any(field is None for field in required_fields):
                 raise ValidationError("Promotion name and all non-AI fields must be filled out for non-AI generated promotions.")
-            if self.discount_percent is None and self.discount_dollars is None:
-                raise ValidationError("Either discount_percent or discount_dollars must be filled out for non-AI generated promotions.")
+            if (self.discount_percent is None and self.discount_dollars is None) or (self.discount_percent is not None and self.discount_dollars is not None):
+                raise ValidationError("Only one of discount_percent or discount_dollars must be filled out for non-AI generated promotions.")
 
         # Case 2: Promotion IS AI generated
         else:
-            if any(field is None for field in ai_fields + [self.promotion_name]):
-                raise ValidationError("Promotion name and all AI fields must be filled out for AI generated promotions.")
+            pct_none_count = sum([self.ai_discount_percent_min is None, self.ai_discount_percent_max is None])
+            dollars_none_count = sum([self.ai_discount_dollars_min is None, self.ai_discount_dollars_max is None])
+            has_no_minmax = (pct_none_count == 2 and dollars_none_count == 2) or pct_none_count == 1 or dollars_none_count == 1 or (pct_none_count == 0 and dollars_none_count == 0)
+            if any(field in (None, '') for field in [self.ai_description, self.promotion_name]) or has_no_minmax:
+                raise ValidationError("Promotion name, AI fields, and only one discount type must be filled out for AI generated promotions.")
             non_ai_fields = [self.display_title, self.display_description, self.discount_percent, self.discount_dollars]
-            if any(field is not None for field in non_ai_fields):
+            if any(field not in (None, '') for field in non_ai_fields):
                 raise ValidationError("Non-AI fields must be left blank for AI generated promotions (except for promotion_name).")
 
     def save(self, *args, **kwargs):
