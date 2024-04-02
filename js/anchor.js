@@ -47,7 +47,6 @@ function displayAlert(data) {
 var mousePos;
 
 document.onmousemove = handleMouseMove;
-setInterval(getMousePosition, 1000);
 
 function handleMouseMove(event) {
     mousePos = {
@@ -86,7 +85,7 @@ function getMousePosition() {
 ///
 
 // Retrieve the page visit data from sessionStorage on page load
-window.addEventListener('load', function() {
+window.addEventListener('load', async function() {
     const storedVisits = sessionStorage.getItem('sessionai_pageVisits');
     //console.log("sessionStorage visit log:", storedVisits)
     if (storedVisits) {
@@ -96,11 +95,14 @@ window.addEventListener('load', function() {
     }
 
     // Log the current page visit
-    logPageVisit(window.location.pathname);
+    await logPageVisit(window.location.pathname);
+
+    // Set the interval for mouse position tracking
+    setInterval(getMousePosition, 1000);
 });
 
 // Function to log the page visit
-function logPageVisit(pagePath) {
+async function logPageVisit(pagePath) {
   // 
   // Record the end of the previous page session if necessary
   //
@@ -137,7 +139,7 @@ function logPageVisit(pagePath) {
   //
   // Emit the page visit data to the backend
   //
-  socket.emit('pageVisit', {
+  await socket.emit('pageVisit', {
     session_id: sessionUUID,
     startTime: currentTime, 
     pageVisitToken: pageVisitToken,
