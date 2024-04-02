@@ -51,6 +51,7 @@ def prompt_claude_and_store_response(session_id):
     return response, timestamp
 
 def prompt_active_sessions_background_task():
+    socketio.sleep(SOCKETIO_BACKGROUND_TASK_DELAY_SECONDS)
     while True:
         active_sessions = get_active_sessions()
         #print(active_sessions)
