@@ -1,4 +1,5 @@
 from functools import cache
+import re
 import requests
 
 import anthropic
@@ -40,3 +41,13 @@ def prompt_claude_session_context(session_id, directive=DEFAULT_DIRECTIVE):
 
     response = message.content[0].text
     return response
+
+def pagevisit_to_root_domain(data):
+    page_url = data['pageURL']
+    # Extract the root domain using a regular expression
+    match = re.search(r'(?<=://)(?:www\.)?([^/?:]+)', page_url)
+    if match:
+        root_domain = match.group(1).split('.')[-2] + '.' + match.group(1).split('.')[-1]
+    else:
+        return None
+    return root_domain

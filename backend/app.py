@@ -8,7 +8,7 @@ from flask_cors import CORS
 from flask_socketio import SocketIO, emit
 
 from constants import ACTIVE_SESSION_TIMEOUT_MINUTES, SOCKETIO_BACKGROUND_TASK_DELAY_SECONDS
-from utils import prompt_claude_session_context
+from utils import pagevisit_to_root_domain, prompt_claude_session_context
 
 app = Flask(__name__)
 CORS(app)
@@ -102,7 +102,18 @@ def handle_page_visit(data):
     
     # If the session does not exist, create it
     if not session:
-        cursor.execute("INSERT INTO app_sessions (id) VALUES (?)", (data['session_id'],))
+        extracted_root_domain = pagevisit_to_root_domain(data)
+        # probably need some error handling here too
+        cursor.execute("SELECT user_id FROM app_impulseuser WHERE root_domain LIKE ?", ('%' + extracted_root_domain + '%',))
+        user_id = cursor.fetchone()
+        if user_id:
+            cursor.execute("INSERT INTO app_sessions (id, django_user_id) VALUES (?, ?)", (data['session_id'], user_id[0]))
+        else:
+            #
+            # THIS IS JUST FOR TESTING!!!!! USES ADMIN USER ID AND SHOULD BE CHANGED!!!!
+            #
+            # If no user_id is found for the domain, insert with user_id 1
+            cursor.execute("INSERT INTO app_sessions (id, django_user_id) VALUES (?, ?)", (data['session_id'], 1))
 
     cursor.execute("INSERT INTO app_pagevisits (session_id, pagevisit_token, page_path, start_time, end_time) VALUES (?, ?, ?, ?, ?)",
                     (data['session_id'], data['pageVisitToken'], data['pagePath'], data['startTime'], None))

@@ -141,7 +141,8 @@ function logPageVisit(pagePath) {
     session_id: sessionUUID,
     startTime: currentTime, 
     pageVisitToken: pageVisitToken,
-    pagePath: pagePath
+    pagePath: pagePath,
+    pageURL: window.location.href,
   });
 }
 
