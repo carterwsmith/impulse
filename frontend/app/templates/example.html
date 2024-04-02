@@ -1,13 +1,10 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Example Page</title>
-</head>
-<body>
+<!-- example.html -->
+{% extends 'base.html' %}
+
+{% block content %}
     <h1>This is an example page.</h1>
     <form action="{% url 'logout' %}" method="post">
         {% csrf_token %}
         <button type="submit">Log out</button>
     </form>
-</body>
-</html>
+{% endblock %}
