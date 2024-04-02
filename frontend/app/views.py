@@ -1,11 +1,32 @@
 from django.contrib.auth import login, logout
 from django.contrib.auth.forms import UserCreationForm
+from django.http import HttpResponseForbidden
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 
 from .forms import DomainOnboardingForm, PromotionForm
 from .services import ImpulseUserService, PromotionsService
 
+#
+# DECORATORS
+#
+def redirect_if_not_logged_in(view_func):
+    def _wrapped_view(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect('/')
+        return view_func(request, *args, **kwargs)
+    return _wrapped_view
+
+def forbidden_if_not_logged_in(view_func):
+    def _wrapped_view(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return HttpResponseForbidden()
+        return view_func(request, *args, **kwargs)
+    return _wrapped_view
+
+# 
+# VIEWS
+#
 def base_view(request):
     user = ImpulseUserService.impulse_user_from_request(request)
     if not ImpulseUserService.does_user_have_domain(user):
@@ -28,6 +49,7 @@ def logout_view(request):
     logout(request)
     return redirect('/')
 
+@redirect_if_not_logged_in
 def domain_onboarding(request):
     if request.method == 'POST':
         form = DomainOnboardingForm(request.POST)
@@ -39,6 +61,7 @@ def domain_onboarding(request):
         form = DomainOnboardingForm()
     return render(request, 'onboarding.html', {'form': form})
 
+@redirect_if_not_logged_in
 def manage_promotions(request):
     if request.method == 'POST':
         form = PromotionForm(request.POST)
@@ -55,6 +78,7 @@ def manage_promotions(request):
     promotions = PromotionsService.all_promotions_for_user(user)
     return render(request, 'promotions.html', {'form': form, 'promotions': promotions})
 
+@forbidden_if_not_logged_in
 @require_POST
 def delete_promotion(request, promotion_id):
     PromotionsService.delete_promotion_from_id(promotion_id)
