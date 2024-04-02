@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import ImpulseUser
+from .models import ImpulseUser, Promotions
 
 class DomainOnboardingForm(forms.ModelForm):
     class Meta:
@@ -16,3 +16,8 @@ class DomainOnboardingForm(forms.ModelForm):
         #    raise forms.ValidationError('Invalid domain')
 
         return cleaned_data
+
+class PromotionForm(forms.ModelForm):
+    class Meta:
+        model = Promotions
+        fields = ['promotion_name', 'display_title', 'display_description', 'is_discount', 'discount_percent', 'discount_dollars']

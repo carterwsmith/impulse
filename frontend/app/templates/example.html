@@ -3,6 +3,7 @@
 
 {% block content %}
     <h1>This is an example page.</h1>
+    <a href="{% url 'promotions' %}"><button>Promotions</button></a>
     <form action="{% url 'logout' %}" method="post">
         {% csrf_token %}
         <button type="submit">Log out</button>

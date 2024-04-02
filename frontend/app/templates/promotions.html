@@ -1,0 +1,35 @@
+<!-- promotions.html -->
+{% extends 'base.html' %}
+
+{% block content %}
+    <h1>Add a New Promotion</h1>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Add Promotion</button>
+    </form>
+
+    <h2>Existing Promotions</h2>
+    <table>
+        <tr>
+            <th>Promotion Name</th>
+            <th>Title</th>
+            <th>Description</th>
+            <th>Delete</th>
+        </tr>
+        {% for promotion in promotions %}
+            <tr>
+                <td>{{ promotion.promotion_name }}</td>
+                <td>{{ promotion.display_title }}</td>
+                <td>{{ promotion.display_description }}</td>
+                <td>
+                    <!-- Delete form -->
+                    <form action="{% url 'delete_promotion' promotion.id %}" method="post">
+                        {% csrf_token %}
+                        <button type="submit">Delete</button>
+                    </form>
+                </td>
+            </tr>
+        {% endfor %}
+    </table>
+{% endblock %}
