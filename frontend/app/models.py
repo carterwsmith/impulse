@@ -32,17 +32,44 @@ class LLMResponses(models.Model):
 class Promotions(models.Model):
     django_user = models.ForeignKey(User, on_delete=models.CASCADE)
 
-    promotion_name = models.CharField(max_length=100)
-    display_title = models.CharField(max_length=100)
-    display_description = models.TextField()
+    is_ai_generated = models.BooleanField(default=False)
+    ai_description = models.TextField(null=True, blank=True)
+    ai_discount_percent_min = models.FloatField(null=True, blank=True)
+    ai_discount_percent_max = models.FloatField(null=True, blank=True)
+    ai_discount_dollars_min = models.FloatField(null=True, blank=True)
+    ai_discount_dollars_max = models.FloatField(null=True, blank=True)
 
-    is_discount = models.BooleanField(default=False)
+    promotion_name = models.CharField(max_length=100)
+
+    display_title = models.CharField(max_length=100, null=True, blank=True)
+    display_description = models.TextField(null=True, blank=True)
     discount_percent = models.FloatField(null=True, blank=True)
     discount_dollars = models.FloatField(null=True, blank=True)
 
+    def clean(self):
+        ai_fields = [self.ai_description, self.ai_discount_percent_min, self.ai_discount_percent_max,
+                         self.ai_discount_dollars_min, self.ai_discount_dollars_max]
+
+        # Case 1: Promotion is NOT AI generated
+        if not self.is_ai_generated:
+            if any(field is not None for field in ai_fields):
+                raise ValidationError("AI fields must be blank for non-AI generated promotions.")
+            required_fields = [self.promotion_name, self.display_title, self.display_description]
+            if any(field is None for field in required_fields):
+                raise ValidationError("Promotion name and all non-AI fields must be filled out for non-AI generated promotions.")
+            if self.discount_percent is None and self.discount_dollars is None:
+                raise ValidationError("Either discount_percent or discount_dollars must be filled out for non-AI generated promotions.")
+
+        # Case 2: Promotion IS AI generated
+        else:
+            if any(field is None for field in ai_fields + [self.promotion_name]):
+                raise ValidationError("Promotion name and all AI fields must be filled out for AI generated promotions.")
+            non_ai_fields = [self.display_title, self.display_description, self.discount_percent, self.discount_dollars]
+            if any(field is not None for field in non_ai_fields):
+                raise ValidationError("Non-AI fields must be left blank for AI generated promotions (except for promotion_name).")
+
     def save(self, *args, **kwargs):
-        if self.is_discount and (self.discount_percent is None and self.discount_dollars is None):
-            raise ValidationError("Either discount_percent or discount_dollars must be not null if is_discount is True")
+        self.clean()
         super(Promotions, self).save(*args, **kwargs)
 
 class ImpulseUser(models.Model):

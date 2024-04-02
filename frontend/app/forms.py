@@ -20,4 +20,20 @@ class DomainOnboardingForm(forms.ModelForm):
 class PromotionForm(forms.ModelForm):
     class Meta:
         model = Promotions
-        fields = ['promotion_name', 'display_title', 'display_description', 'is_discount', 'discount_percent', 'discount_dollars']
+        fields = ['is_ai_generated', 'promotion_name', 'display_title', 'display_description', 'discount_percent', 'discount_dollars',
+                  'ai_description', 'ai_discount_percent_min', 'ai_discount_percent_max', 'ai_discount_dollars_min', 'ai_discount_dollars_max']
+        widgets = {
+            'is_ai_generated': forms.CheckboxInput(attrs={'id': 'is_ai_generated'}),
+            'promotion_name': forms.TextInput(attrs={'id': 'promotion_name'}),
+            'display_title': forms.TextInput(attrs={'id': 'display_title'}),
+            'display_description': forms.Textarea(attrs={'id': 'display_description'}),
+            'discount_percent': forms.NumberInput(attrs={'id': 'discount_percent'}),
+            'discount_dollars': forms.NumberInput(attrs={'id': 'discount_dollars'}),
+            
+            'ai_description': forms.Textarea(attrs={'id': 'ai_description', 'display': 'none'}),
+            'ai_discount_percent_min': forms.NumberInput(attrs={'id': 'ai_discount_percent_min', 'display': 'none'}),
+            'ai_discount_percent_max': forms.NumberInput(attrs={'id': 'ai_discount_percent_max', 'display': 'none'}),
+            'ai_discount_dollars_min': forms.NumberInput(attrs={'id': 'ai_discount_dollars_min', 'display': 'none'}),
+            'ai_discount_dollars_max': forms.NumberInput(attrs={'id': 'ai_discount_dollars_max', 'display': 'none'}),
+        }
+

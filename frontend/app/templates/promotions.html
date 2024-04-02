@@ -8,6 +8,7 @@
         {{ form.as_p }}
         <button type="submit">Add Promotion</button>
     </form>
+    <a href="{% url 'example' %}"><button>Go back</button></a>
 
     <h2>Existing Promotions</h2>
     <table>
@@ -32,4 +33,46 @@
             </tr>
         {% endfor %}
     </table>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var isAiGeneratedCheckbox = document.getElementById('is_ai_generated');
+            var aiFields = ['ai_description', 'ai_discount_percent_min', 'ai_discount_percent_max', 'ai_discount_dollars_min', 'ai_discount_dollars_max',];
+            var nonAiFields = ['display_title', 'display_description', 'discount_percent', 'discount_dollars'];
+        
+            function toggleFieldsOn(fields) {
+                fields.forEach(function(fieldId) {
+                    var field = document.getElementById(fieldId);
+                    field.style.display = 'block';
+                    var label = document.querySelector('label[for="' + fieldId + '"]');
+                    if (label) {
+                        label.style.display = 'block';
+                    }
+                });
+            }
+
+            function toggleFieldsOff(fields) {
+                fields.forEach(function(fieldId) {
+                    var field = document.getElementById(fieldId);
+                    field.style.display = 'none';
+                    var label = document.querySelector('label[for="' + fieldId + '"]');
+                    if (label) {
+                        label.style.display = 'none';
+                    }
+                });
+            }
+
+            toggleFieldsOff(aiFields);
+        
+            isAiGeneratedCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    toggleFieldsOn(aiFields);
+                    toggleFieldsOff(nonAiFields);
+                } else {
+                    toggleFieldsOff(aiFields);
+                    toggleFieldsOn(nonAiFields);
+                }
+            });
+        });
+        </script>
 {% endblock %}
