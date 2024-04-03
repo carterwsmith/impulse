@@ -63,7 +63,13 @@
                 });
             }
 
-            toggleFieldsOff(aiFields);
+            if (isAiGeneratedCheckbox.checked) {
+                toggleFieldsOn(aiFields);
+                toggleFieldsOff(nonAiFields);
+            } else {
+                toggleFieldsOff(aiFields);
+                toggleFieldsOn(nonAiFields);
+            }
         
             isAiGeneratedCheckbox.addEventListener('change', function() {
                 if (this.checked) {
