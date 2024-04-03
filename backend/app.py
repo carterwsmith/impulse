@@ -27,7 +27,9 @@ def get_active_sessions(timeout_minutes=ACTIVE_SESSION_TIMEOUT_MINUTES):
     cursor = conn.cursor()
     now_ms = int(time.time() * 1000)
     one_minute_ago = now_ms - (ACTIVE_SESSION_TIMEOUT_MINUTES * 60000)
-    cursor.execute("SELECT DISTINCT session_id FROM app_mousemovements WHERE CAST(recorded_at AS INTEGER) > ?", (one_minute_ago,))
+    socketio_interval_ago = now_ms - (SOCKETIO_BACKGROUND_TASK_DELAY_SECONDS * 1000)
+    #cursor.execute("SELECT DISTINCT session_id FROM app_mousemovements WHERE CAST(recorded_at AS INTEGER) > ?", (socketio_interval_ago,))
+    cursor.execute("SELECT DISTINCT session_id FROM app_mousemovements WHERE CAST(recorded_at AS INTEGER) > ? AND session_id IN (SELECT session_id FROM app_mousemovements GROUP BY session_id HAVING MIN(CAST(recorded_at AS INTEGER)) < ?)", (socketio_interval_ago, socketio_interval_ago))
     res = cursor.fetchall()
 
     # Set the end_time of all hanging (end_time = NULL) page_visits in INACTIVE sessions to now_ms
