@@ -28,6 +28,7 @@ class LLMResponses(models.Model):
     response = models.TextField()
     recorded_at = models.TextField()
     is_emitted = models.BooleanField(default=False)
+    response_html = models.TextField(null=True)
 
 class Promotions(models.Model):
     django_user = models.ForeignKey(User, on_delete=models.CASCADE)
