@@ -45,6 +45,7 @@ class Promotions(models.Model):
     display_description = models.TextField(null=True, blank=True)
     discount_percent = models.FloatField(null=True, blank=True)
     discount_dollars = models.FloatField(null=True, blank=True)
+    discount_code = models.CharField(max_length=50, null=True)
 
     def clean(self):
         ai_fields = [self.ai_description, self.ai_discount_percent_min, self.ai_discount_percent_max,

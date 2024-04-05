@@ -20,7 +20,7 @@ class DomainOnboardingForm(forms.ModelForm):
 class PromotionForm(forms.ModelForm):
     class Meta:
         model = Promotions
-        fields = ['is_ai_generated', 'promotion_name', 'display_title', 'display_description', 'discount_percent', 'discount_dollars',
+        fields = ['is_ai_generated', 'promotion_name', 'discount_code', 'display_title', 'display_description', 'discount_percent', 'discount_dollars',
                   'ai_description', 'ai_discount_percent_min', 'ai_discount_percent_max', 'ai_discount_dollars_min', 'ai_discount_dollars_max']
         widgets = {
             'is_ai_generated': forms.CheckboxInput(attrs={'id': 'is_ai_generated'}),
