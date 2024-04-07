@@ -2,7 +2,7 @@
 db/
 
 # built chrome extension for testing
-impulse_chrome/
+impulse_chrome*/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -16,7 +16,7 @@ def promotions_tostring(session_id, test=False):
 
     promotion_string = ""
     for promotion_tuple in promotions:
-        promotion_string += "<promotion>\n"
+        promotion_string += f"<promotion id={promotion_tuple[0]}>\n"
         is_ai_generated = promotion_tuple[11]
         if is_ai_generated:
             ai_columns = promotion_tuple[6:11]

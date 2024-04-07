@@ -8,7 +8,7 @@ from flask_cors import CORS
 from flask_socketio import SocketIO, emit
 
 from constants import ACTIVE_SESSION_TIMEOUT_MINUTES, SOCKETIO_BACKGROUND_TASK_DELAY_SECONDS
-from utils import pagevisit_to_root_domain, prompt_claude_session_context
+from utils import pagevisit_to_root_domain, prompt_claude_session_context, promotion_id_to_dict, promotion_html_template
 
 app = Flask(__name__)
 CORS(app)
@@ -40,13 +40,38 @@ def get_active_sessions(timeout_minutes=ACTIVE_SESSION_TIMEOUT_MINUTES):
 
     return [session[0] for session in res]
 
-def prompt_claude_and_store_response(session_id):
+def prompt_claude_and_store_response(session_id, promotion=True):
     response = prompt_claude_session_context(session_id)
     timestamp = str(int(time.time()))
+    if promotion:
+        if 'no promotion' in response:
+            # generate placeholder html, desired behavior is no popup
+            promotion_html = "no promotion"
+        else:
+            try:
+                promotion_id_int = int(response)
+                promotion_dict = promotion_id_to_dict(promotion_id_int)
+                promotion_ai_bool = int(promotion_dict["is_ai_generated"])
+                if promotion_ai_bool:
+                    # handle ai generating html logic here
+                    promotion_html = promotion_html_template("_", "placeholder", "_", "_")
+                else:
+                    # non ai generated html logic
+                    discount_var = f"{int(promotion_dict['discount_percent']) if promotion_dict['discount_percent'] % 1 == 0 else promotion_dict['discount_percent']}% OFF" if promotion_dict['discount_percent'] else f"${promotion_dict['discount_dollars']}"
+                    discountcode_var = promotion_dict["discount_code"] if promotion_dict["discount_code"] else ""
+
+                    promotion_html = promotion_html_template(
+                        discount_var,
+                        promotion_dict["display_title"],
+                        promotion_dict["display_description"],
+                        discountcode_var,
+                    )
+            except:
+                raise ValueError("Error while generating html")
 
     conn = db_connection()
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO app_llmresponses (session_id, response, recorded_at, is_emitted) VALUES (?, ?, ?, ?)", (session_id, response, timestamp, False))
+    cursor.execute("INSERT INTO app_llmresponses (session_id, response, recorded_at, is_emitted, response_html) VALUES (?, ?, ?, ?, ?)", (session_id, response, timestamp, False, promotion_html))
     conn.commit()
     conn.close()
     
@@ -84,7 +109,7 @@ def handle_mouse_update(data):
         conn.commit()
 
         # also check if there is a llmresponse that is not emitted
-        cursor.execute("SELECT response FROM app_llmresponses WHERE is_emitted = FALSE AND session_id = ? ORDER BY recorded_at DESC LIMIT 1", (data['session_id'],))
+        cursor.execute("SELECT response_html FROM app_llmresponses WHERE is_emitted = FALSE AND session_id = ? ORDER BY recorded_at DESC LIMIT 1", (data['session_id'],))
         llm_response = cursor.fetchone()
         if llm_response:
             emit('llmResponse', llm_response[0])

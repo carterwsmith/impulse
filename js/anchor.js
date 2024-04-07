@@ -31,7 +31,20 @@ var socket;
 socket = io('http://127.0.0.1:5000');
 //console.log('socket.io connected');
 socket.on('llmResponse', (data) => {
-  displayAlert(data);
+  //displayAlert(data);
+  //console.log("response received")
+
+  if (data === "no promotion") {
+    return;
+  }
+
+  if (!document.getElementById('impulse-promotion') || document.getElementById('impulse-promotion').style.display === 'none') {
+    if (document.getElementById('impulse-promotion')) {
+      document.getElementById('impulse-promotion').outerHTML = data;
+    } else {
+      document.body.innerHTML += data;
+    }
+  }
 });
 
 function displayAlert(data) {
@@ -64,7 +77,7 @@ function getMousePosition() {
     if (elementMouseIsOver && (elementMouseIsOver.tagName.toLowerCase() === 'body' || elementMouseIsOver.innerText === "")) {
         textOrTagHovered = `<${elementMouseIsOver.tagName.toLowerCase()}>`
     } else if (elementMouseIsOver) {
-        textOrTagHovered = elementMouseIsOver.innerText
+        textOrTagHovered = elementMouseIsOver.innerText.slice(0, 100)
     } else {
       return
     }
