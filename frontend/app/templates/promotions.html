@@ -2,25 +2,12 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    <div id="myModal" class="modal">
-        <div class="modal-content">
-          <span class="close">&times;</span>
-          <h2>Add a New Promotion</h2>
-          <form method="post">
-              {% csrf_token %}
-              {{ form.as_p }}
-              <button type="submit">Add Promotion</button>
-          </form>
-        </div>
-    </div>
-
-    <h2>Existing Promotions</h2>
+    <h2>Promotions</h2>
     <table>
         <tr>
             <th>Promotion Name</th>
             <th>Title</th>
             <th>Description</th>
-            <th>Delete</th>
         </tr>
         {% for promotion in promotions %}
             <tr>
@@ -34,99 +21,18 @@
                         <button type="submit">Delete</button>
                     </form>
                 </td>
+                <td>
+                    <!-- Edit form -->
+                    <form action="{% url 'edit_promotion' promotion.id %}">
+                        {% csrf_token %}
+                        <button type="submit">Edit</button>
+                    </form>
+                </td>
             </tr>
         {% endfor %}
     </table>
 
     <a href="{% url 'example' %}"><button>Go back</button></a>
-    <button id="openModal">Add New Promotion</button>
+    <a href="{% url 'add_promotion' %}"><button>Add New Promotion</button></a>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            var isAiGeneratedCheckbox = document.getElementById('is_ai_generated');
-            var aiFields = ['ai_description', 'ai_discount_percent_min', 'ai_discount_percent_max', 'ai_discount_dollars_min', 'ai_discount_dollars_max',];
-            var nonAiFields = ['display_title', 'display_description', 'discount_percent', 'discount_dollars'];
-        
-            function toggleFieldsOn(fields) {
-                fields.forEach(function(fieldId) {
-                    var field = document.getElementById(fieldId);
-                    field.style.display = 'block';
-                    var label = document.querySelector('label[for="' + fieldId + '"]');
-                    if (label) {
-                        label.style.display = 'block';
-                    }
-                });
-            }
-
-            function toggleFieldsOff(fields) {
-                fields.forEach(function(fieldId) {
-                    var field = document.getElementById(fieldId);
-                    field.style.display = 'none';
-                    field.value = ''; // Clear the field value
-                    var label = document.querySelector('label[for="' + fieldId + '"]');
-                    if (label) {
-                        label.style.display = 'none';
-                    }
-                });
-            }
-
-            if (isAiGeneratedCheckbox.checked) {
-                toggleFieldsOn(aiFields);
-                toggleFieldsOff(nonAiFields);
-            } else {
-                toggleFieldsOff(aiFields);
-                toggleFieldsOn(nonAiFields);
-            }
-        
-            isAiGeneratedCheckbox.addEventListener('change', function() {
-                if (this.checked) {
-                    toggleFieldsOn(aiFields);
-                    toggleFieldsOff(nonAiFields);
-                } else {
-                    toggleFieldsOff(aiFields);
-                    toggleFieldsOn(nonAiFields);
-                }
-            });
-        });
-
-        // modal logic
-        // Get the modal
-        var modal = document.getElementById('myModal');
-
-        // Get the button that opens the modal
-        var btn = document.getElementById("openModal");
-
-        // Get the <span> element that closes the modal
-        var span = document.getElementsByClassName("close")[0];
-
-        // When the user clicks the button, open the modal 
-        btn.onclick = function() {
-        modal.style.display = "block";
-        }
-
-        // When the user clicks on <span> (x), close the modal
-        span.onclick = function() {
-        modal.style.display = "none";
-        }
-
-        // When the user clicks anywhere outside of the modal, close it
-        window.onclick = function(event) {
-        if (event.target == modal) {
-            modal.style.display = "none";
-        }
-        }
-
-        // Get the form
-        var form = document.querySelector('form');
-
-        // When the form is submitted, close the modal if the form is valid
-        form.addEventListener('submit', function(event) {
-            if (form.checkValidity()) {
-                modal.style.display = "none";
-            } else {
-                // If the form is not valid, prevent it from being submitted
-                event.preventDefault();
-            }
-        });
-        </script>
 {% endblock %}

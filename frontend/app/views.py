@@ -1,9 +1,10 @@
 from django.contrib.auth import login, logout
 from django.contrib.auth.forms import UserCreationForm
 from django.http import HttpResponseForbidden
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
+from .models import Promotions
 from .forms import DomainOnboardingForm, PromotionForm
 from .services import ImpulseUserService, PromotionsService
 
@@ -62,7 +63,7 @@ def domain_onboarding(request):
     return render(request, 'onboarding.html', {'form': form})
 
 @redirect_if_not_logged_in
-def manage_promotions(request):
+def add_promotion(request):
     if request.method == 'POST':
         form = PromotionForm(request.POST)
         if form.is_valid():
@@ -70,13 +71,31 @@ def manage_promotions(request):
             impulse_user = ImpulseUserService.impulse_user_from_request(request)
             promotion.django_user = impulse_user.user
             promotion.save()
-            return redirect('promotions')  # Redirect to the same page to show the updated list and a clean form
+            return redirect('promotions')  # Redirect to the manage promotion page to show the updated list
     else:
         form = PromotionForm()
     
+    return render(request, 'add_promotion.html', {'form': form})
+
+
+@redirect_if_not_logged_in
+def edit_promotion(request, promotion_id):
+    promotion = get_object_or_404(Promotions, pk=promotion_id)
+    if request.method == 'POST':
+        form = PromotionForm(request.POST, instance=promotion)
+        if form.is_valid():
+            form.save()
+            return redirect('promotions')  # Redirect to the manage promotion page to show the updated list
+    else:
+        form = PromotionForm(instance=promotion)
+    
+    return render(request, 'edit_promotion.html', {'form': form})
+
+@redirect_if_not_logged_in
+def manage_promotions(request):
     user = ImpulseUserService.impulse_user_from_request(request)
     promotions = PromotionsService.all_promotions_for_user(user)
-    return render(request, 'promotions.html', {'form': form, 'promotions': promotions})
+    return render(request, 'promotions.html', {'promotions': promotions})
 
 @forbidden_if_not_logged_in
 @require_POST
