@@ -8,6 +8,7 @@ from flask_cors import CORS
 from flask_socketio import SocketIO, emit
 
 from constants import ACTIVE_SESSION_TIMEOUT_MINUTES, SOCKETIO_BACKGROUND_TASK_DELAY_SECONDS
+from commands.db_get_user_image_urls import get_user_image_urls
 from utils import pagevisit_to_root_domain, prompt_claude_session_context, promotion_id_to_dict, promotion_html_template
 
 app = Flask(__name__)
@@ -156,6 +157,10 @@ def handle_page_visit_end(data):
                     (data['endTime'], data['pageVisitToken']))
     conn.commit()
     conn.close()
+
+@socketio.on('loadImages')
+def load_images(data):
+    emit('loadImagesComplete', get_user_image_urls(data['session_id']))
 
 if __name__ == '__main__':
     socketio.start_background_task(prompt_active_sessions_background_task)

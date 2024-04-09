@@ -111,6 +111,23 @@ function loadGoogleFont() {
 ///
 ///
 
+function startImagePrefetch() {
+  socket.emit('loadImages', {
+    session_id: sessionUUID,
+  })
+}
+
+socket.on('loadImagesComplete', (data) => {
+  data.forEach(imageUrl => {
+    if (imageUrl !== null) {
+      let link = document.createElement('link');
+      link.rel = 'prefetch';
+      link.href = imageUrl;
+      document.head.appendChild(link);
+    }
+  });
+});
+
 // Retrieve the page visit data from sessionStorage on page load
 window.addEventListener('load', async function() {
     const storedVisits = sessionStorage.getItem('sessionai_pageVisits');
@@ -128,6 +145,9 @@ window.addEventListener('load', async function() {
 
     // Set the interval for mouse position tracking
     setInterval(getMousePosition, 1000);
+
+    // Emit the signal to load images
+    startImagePrefetch();
 });
 
 // Function to log the page visit
