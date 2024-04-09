@@ -41,6 +41,7 @@ class Promotions(models.Model):
     ai_discount_dollars_max = models.FloatField(null=True, blank=True)
 
     promotion_name = models.CharField(max_length=100)
+    image_url = models.CharField(max_length=150, null=True, blank=True)
 
     display_title = models.CharField(max_length=100, null=True, blank=True)
     display_description = models.TextField(null=True, blank=True)
