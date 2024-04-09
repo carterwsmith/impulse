@@ -1,13 +1,15 @@
 import json
 import os
 import shutil
+import subprocess
 
 import jsmin
 
 def build_extension():
     # Create directory for the extension
     extension_name = "impulse_chrome"
-    extension_dir = os.path.join(os.getcwd(), f'chrome/{extension_name}')
+    git_commit_hash = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"]).strip().decode("utf-8")
+    extension_dir = os.path.join(os.getcwd(), f'chrome/{extension_name}_{git_commit_hash}')
     os.makedirs(extension_dir, exist_ok=True)
     
     # Create manifest.json
