@@ -76,15 +76,18 @@ def promotion_id_to_dict(promotion_id):
 
     return promotion_dict
 
-def promotion_html_template(discount, title, description, discount_code):
-    return f'''
-    <div id="impulse-promotion" style="position:fixed; top:0; left:0; width:100%; height:100%; background-color:rgba(0,0,0,0.5); display:flex; justify-content:center; align-items:center; z-index: 9999;">
-        <div style="position:relative; width:50%; max-width:600px; padding:20px; background-color:white; box-shadow:0 4px 6px rgba(0,0,0,0.25); text-align:center;">
-            <div style="position:absolute; top:10px; right:10px; cursor:pointer;" onclick="this.parentElement.parentElement.style.display='none';">X</div>
-            <div style="font-size:24px; font-weight:bold; margin-bottom:10px;">{discount}</div>
-            <div style="font-size:20px; font-weight:bold; margin-bottom:10px;">{title}</div>
-            <div style="font-size:16px; margin-bottom:10px;">{description}</div>
-            <div style="font-size:20px; font-weight:bold;">{discount_code}</div>
-        </div>
+def promotion_html_template(discount, title, description, discount_code, image_url="https://content.api.news/v3/images/bin/82b374759b87b7e45eb5dbb04157d7cc"):
+    return '''<div id="impulse-promotion"
+    style="position:fixed !important; top:0 !important; left:0 !important; width:100% !important; height:100% !important; background-color:rgba(0,0,0,0.5); display:flex; justify-content:center; align-items:center; z-index: 9999;">
+    <div
+      style="position:relative !important; width:50% !important; max-width:500px !important; padding:20px 0 20px 0 !important; background-color:white !important; box-shadow:0 4px 6px rgba(0,0,0,0.25) !important; text-align:center !important;">
+      <div style="position:absolute; top:10px; right:10px; cursor:pointer;"
+        onclick="this.parentElement.parentElement.style.display='none';">&times;</div>
+      <div class="ss" style="font-size:40px; font-weight:bold; margin-bottom:20px; font-family: 'Kanit', sans-serif;">{discount}</div>
+        <img src="{image_url}" style="width: 100%; max-height: 150px; padding-bottom: 10px; object-fit: cover;">
+      <div class="ss" style="font-size:20px; font-weight:bold; margin-bottom:10px; font-family: 'Kanit', sans-serif;">{title}</div>
+      <div class="ss" style="font-size:16px; margin-bottom:10px; font-family: 'Kanit', sans-serif;">{description}</div>
+      <div class="ss" style="font-size:20px; font-weight:bold; font-family: 'Kanit', sans-serif;">{discount_code}</div>
     </div>
-    '''
+  </div>
+    '''.format(discount=discount, title=title, description=description, discount_code=discount_code, image_url=image_url).replace('\n', '')
