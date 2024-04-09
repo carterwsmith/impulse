@@ -81,7 +81,9 @@ def add_promotion(request):
 @redirect_if_not_logged_in
 def edit_promotion(request, promotion_id):
     promotion = get_object_or_404(Promotions, pk=promotion_id)
-    if request.method == 'POST':
+    if not PromotionsService.is_promotion_owned_by_user(request.user.id, promotion_id):
+        return HttpResponseForbidden("Forbidden")
+    elif request.method == 'POST':
         form = PromotionForm(request.POST, instance=promotion)
         if form.is_valid():
             form.save()
@@ -100,5 +102,8 @@ def manage_promotions(request):
 @forbidden_if_not_logged_in
 @require_POST
 def delete_promotion(request, promotion_id):
-    PromotionsService.delete_promotion_from_id(promotion_id)
-    return redirect('promotions')
+    if not PromotionsService.is_promotion_owned_by_user(request.user.id, promotion_id):
+        return HttpResponseForbidden("Forbidden")
+    else:
+        PromotionsService.delete_promotion_from_id(promotion_id)
+        return redirect('promotions')

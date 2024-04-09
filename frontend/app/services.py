@@ -25,3 +25,7 @@ class PromotionsService():
         promotion = PromotionsService.get_promotion_from_id(promotion_id)
         promotion.delete()
         return True
+
+    def is_promotion_owned_by_user(django_user_id, promotion_id):
+        promotion = PromotionsService.get_promotion_from_id(promotion_id)
+        return int(promotion.django_user.id) == int(django_user_id)
