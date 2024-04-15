@@ -111,12 +111,6 @@ function loadGoogleFont() {
 ///
 ///
 
-function startImagePrefetch() {
-  socket.emit('loadImages', {
-    session_id: sessionUUID,
-  })
-}
-
 socket.on('loadImagesComplete', (data) => {
   data.forEach(imageUrl => {
     if (imageUrl !== null) {
@@ -145,9 +139,6 @@ window.addEventListener('load', async function() {
 
     // Set the interval for mouse position tracking
     setInterval(getMousePosition, 1000);
-
-    // Emit the signal to load images
-    startImagePrefetch();
 });
 
 // Function to log the page visit

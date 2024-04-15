@@ -148,6 +148,8 @@ def handle_page_visit(data):
     session.commit()
     session.close()
 
+    emit('loadImagesComplete', get_user_image_urls(data['session_id']))
+
 @socketio.on('pageVisitEnd')
 def handle_page_visit_end(data):
     session = _db_session()
@@ -156,10 +158,6 @@ def handle_page_visit_end(data):
         page_visit.end_time = data['endTime']
         session.commit()
         session.close()
-
-@socketio.on('loadImages')
-def load_images(data):
-    emit('loadImagesComplete', get_user_image_urls(data['session_id']))
 
 if __name__ == '__main__':
     socketio.start_background_task(prompt_active_sessions_background_task)
