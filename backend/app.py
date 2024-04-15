@@ -1,49 +1,46 @@
 from datetime import datetime
-import sqlite3
 import threading
 import time
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
+from sqlalchemy import func, desc, Integer
+from sqlalchemy.orm import joinedload
 
 from constants import ACTIVE_SESSION_TIMEOUT_MINUTES, SOCKETIO_BACKGROUND_TASK_DELAY_SECONDS
 from commands.db_get_user_image_urls import get_user_image_urls
 from utils import pagevisit_to_root_domain, prompt_claude_session_context, promotion_id_to_dict, promotion_html_template
+from postgres.db_utils import _db_session
+from postgres.schema import ImpulseUser, Sessions, PageVisits, MouseMovements, LLMResponses
 
 app = Flask(__name__)
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-def db_connection():
-    conn = None
-    try:
-        conn = sqlite3.connect('backend/db/app.db')
-    except sqlite3.error as e:
-        print(e)
-    return conn
-
 def get_active_sessions(timeout_minutes=ACTIVE_SESSION_TIMEOUT_MINUTES):
-    conn = db_connection()
-    cursor = conn.cursor()
+    session = _db_session()
+
     now_ms = int(time.time() * 1000)
     one_minute_ago = now_ms - (ACTIVE_SESSION_TIMEOUT_MINUTES * 60000)
     socketio_interval_ago = now_ms - (SOCKETIO_BACKGROUND_TASK_DELAY_SECONDS * 1000)
-    #cursor.execute("SELECT DISTINCT session_id FROM app_mousemovements WHERE CAST(recorded_at AS INTEGER) > ?", (socketio_interval_ago,))
-    cursor.execute("SELECT DISTINCT session_id FROM app_mousemovements WHERE CAST(recorded_at AS INTEGER) > ? AND session_id IN (SELECT session_id FROM app_mousemovements GROUP BY session_id HAVING MIN(CAST(recorded_at AS INTEGER)) < ?)", (socketio_interval_ago, socketio_interval_ago))
-    res = cursor.fetchall()
+    
+    active_sessions = session.query(MouseMovements.session_id).filter(
+        MouseMovements.recorded_at > socketio_interval_ago,
+        MouseMovements.session_id.in_(
+            session.query(MouseMovements.session_id).group_by(MouseMovements.session_id).having(
+                func.min(MouseMovements.recorded_at) < socketio_interval_ago
+            )
+        )
+    ).distinct().all()
 
-    # Set the end_time of all hanging (end_time = NULL) page_visits in INACTIVE sessions to now_ms
-    # cursor.execute("UPDATE app_pagevisits SET end_time = ? WHERE session_id NOT IN (SELECT session_id FROM app_mousemovements WHERE CAST(recorded_at AS INTEGER) > ?) AND end_time IS NULL", (now_ms, one_minute_ago))
+    session.close()
 
-    conn.commit()
-    conn.close()
-
-    return [session[0] for session in res]
+    return [session[0] for session in active_sessions]
 
 def prompt_claude_and_store_response(session_id, promotion=True):
     response = prompt_claude_session_context(session_id)
-    timestamp = str(int(time.time()))
+    timestamp = int(time.time())
     if promotion:
         if 'no promotion' in response:
             # generate placeholder html, desired behavior is no popup
@@ -70,11 +67,11 @@ def prompt_claude_and_store_response(session_id, promotion=True):
             except:
                 raise ValueError("Error while generating html")
 
-    conn = db_connection()
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO app_llmresponses (session_id, response, recorded_at, is_emitted, response_html) VALUES (?, ?, ?, ?, ?)", (session_id, response, timestamp, False, promotion_html))
-    conn.commit()
-    conn.close()
+    session = _db_session()
+    llm_response = LLMResponses(session_id=session_id, response=response, recorded_at=timestamp, is_emitted=False, response_html=promotion_html)
+    session.add(llm_response)
+    session.commit()
+    session.close()
     
     return response, timestamp
 
@@ -88,75 +85,77 @@ def prompt_active_sessions_background_task():
         socketio.sleep(SOCKETIO_BACKGROUND_TASK_DELAY_SECONDS)
 
 def should_log_mouse_update(session_id, new_x, new_y):
-    conn = db_connection()
-    cursor = conn.cursor()
+    session = _db_session()
     now_ms = int(time.time() * 1000)
     one_minute_ago = now_ms - (ACTIVE_SESSION_TIMEOUT_MINUTES * 60000)
-    cursor.execute("SELECT position_x, position_y FROM app_mousemovements WHERE session_id = ? AND CAST(recorded_at AS INTEGER) > ? ORDER BY recorded_at LIMIT 1",
-                   (session_id, one_minute_ago))
-    last_position = cursor.fetchone()
-    cursor.execute("SELECT COUNT(*) FROM app_mousemovements WHERE session_id = ?", (session_id,))
-    has_mouse_movements = cursor.fetchone()[0] > 0
-    conn.close()
+    last_position = session.query(MouseMovements.position_x, MouseMovements.position_y).filter(MouseMovements.session_id == session_id, MouseMovements.recorded_at > one_minute_ago).order_by(MouseMovements.recorded_at).first()
+    has_mouse_movements = session.query(MouseMovements).filter(MouseMovements.session_id == session_id).count() > 0
+    session.close()
     return (not last_position and not has_mouse_movements) or last_position[0] != new_x or last_position[1] != new_y
 
 @socketio.on('mouseUpdate')
 def handle_mouse_update(data):
     if should_log_mouse_update(data['session_id'], data['mousePos']['x'], data['mousePos']['y']):
-        conn = db_connection()
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO app_mousemovements (session_id, pagevisit_token_id, position_x, position_y, text_or_tag_hovered, recorded_at) VALUES (?, ?, ?, ?, ?, ?)",
-                        (data['session_id'], data['pageVisitToken'], data['mousePos']['x'], data['mousePos']['y'], data['hovered'], data['recordedAt']))
-        conn.commit()
+        session = _db_session()
+        mouse_movement = MouseMovements(
+            session_id=data['session_id'],
+            pagevisit_token_id=data['pageVisitToken'],
+            position_x=data['mousePos']['x'],
+            position_y=data['mousePos']['y'],
+            text_or_tag_hovered=data['hovered'],
+            recorded_at=data['recordedAt']
+        )
+        session.add(mouse_movement)
+        session.commit()
 
         # also check if there is a llmresponse that is not emitted
-        cursor.execute("SELECT response_html FROM app_llmresponses WHERE is_emitted = FALSE AND session_id = ? ORDER BY recorded_at DESC LIMIT 1", (data['session_id'],))
-        llm_response = cursor.fetchone()
+        llm_response = session.query(LLMResponses.response_html).filter(LLMResponses.is_emitted == False, LLMResponses.session_id == data['session_id']).order_by(LLMResponses.recorded_at.desc()).first()
         if llm_response:
             emit('llmResponse', llm_response[0])
             # Set the is_emitted of the most recent llmresponse for that session_id to TRUE
-            cursor.execute("UPDATE app_llmresponses SET is_emitted = TRUE WHERE session_id = ? AND id = (SELECT id FROM app_llmresponses WHERE session_id = ? ORDER BY recorded_at DESC LIMIT 1)", (data['session_id'], data['session_id']))
-            conn.commit()
-        conn.close()
+            session.query(LLMResponses).filter(LLMResponses.session_id == data['session_id']).update({LLMResponses.is_emitted: True})
+            session.commit()
+        session.close()
 
 @socketio.on('pageVisit')
 def handle_page_visit(data):
-    conn = db_connection()
-    cursor = conn.cursor()
+    session = _db_session()
     
     ## create session if needed
     # Check if the session exists
-    cursor.execute("SELECT id FROM app_sessions WHERE id = ?", (data['session_id'],))
-    session = cursor.fetchone()
+    session_exists = session.query(Sessions).filter(Sessions.id == data['session_id']).first()
     
     # If the session does not exist, create it
-    if not session:
+    if not session_exists:
         extracted_root_domain = pagevisit_to_root_domain(data)
         # probably need some error handling here too
-        cursor.execute("SELECT user_id FROM app_impulseuser WHERE root_domain LIKE ?", ('%' + extracted_root_domain + '%',))
-        user_id = cursor.fetchone()
+        user_id = session.query(ImpulseUser.id).filter(ImpulseUser.root_domain.like('%' + extracted_root_domain + '%')).first()
         if user_id:
-            cursor.execute("INSERT INTO app_sessions (id, django_user_id) VALUES (?, ?)", (data['session_id'], user_id[0]))
+            new_session = Sessions(id=data['session_id'], impulse_user_id=user_id[0])
+            session.add(new_session)
+            session.commit()
         else:
             #
             # THIS IS JUST FOR TESTING!!!!! USES ADMIN USER ID AND SHOULD BE CHANGED!!!!
             #
             # If no user_id is found for the domain, insert with user_id 1
-            cursor.execute("INSERT INTO app_sessions (id, django_user_id) VALUES (?, ?)", (data['session_id'], 1))
+            new_session = Sessions(id=data['session_id'], impulse_user_id=1)
+            session.add(new_session)
+            session.commit()
 
-    cursor.execute("INSERT INTO app_pagevisits (session_id, pagevisit_token, page_path, start_time, end_time) VALUES (?, ?, ?, ?, ?)",
-                    (data['session_id'], data['pageVisitToken'], data['pagePath'], data['startTime'], None))
-    conn.commit()
-    conn.close()
+    new_page_visit = PageVisits(session_id=data['session_id'], pagevisit_token=data['pageVisitToken'], page_path=data['pagePath'], start_time=data['startTime'], end_time=None)
+    session.add(new_page_visit)
+    session.commit()
+    session.close()
 
 @socketio.on('pageVisitEnd')
 def handle_page_visit_end(data):
-    conn = db_connection()
-    cursor = conn.cursor()
-    cursor.execute("UPDATE app_pagevisits SET end_time = ? WHERE pagevisit_token = ?",
-                    (data['endTime'], data['pageVisitToken']))
-    conn.commit()
-    conn.close()
+    session = _db_session()
+    page_visit = session.query(PageVisits).filter(PageVisits.pagevisit_token == data['pageVisitToken']).first()
+    if page_visit:
+        page_visit.end_time = data['endTime']
+        session.commit()
+        session.close()
 
 @socketio.on('loadImages')
 def load_images(data):

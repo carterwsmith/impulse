@@ -1,8 +1,0 @@
-@font-face {
-    font-family: 'Cotham';
-    src: url('../../static/fonts/CothamSans.otf') format('opentype');
-}
-
-body {
-    font-family: 'Cotham', sans-serif;
-}
