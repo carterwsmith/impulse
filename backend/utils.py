@@ -1,13 +1,13 @@
 from functools import cache
 import re
 import requests
-import sqlite3
 
 import anthropic
 from dotenv import load_dotenv
 
 from commands.db_promotions_tostring import promotions_tostring
 from commands.db_session_tostring import session_tostring
+from postgres.db_utils import _db_session
 
 load_dotenv()
 
@@ -62,17 +62,16 @@ def pagevisit_to_root_domain(data):
     return root_domain
 
 def promotion_id_to_dict(promotion_id):
-    # Connect to the SQLite database
-    conn = sqlite3.connect('backend/db/app.db')
-    cursor = conn.cursor()
+    # Connect to the PostgreSQL database
+    session = _db_session()
 
-    cursor.execute('SELECT * FROM app_promotions WHERE id = ?', (promotion_id,))
-    promotion = cursor.fetchone()
+    promotion = session.query(Promotions).filter(Promotions.id == promotion_id).first()
 
-    conn.close()
+    session.close()
 
-    # Convert the promotion tuple to a dictionary
-    promotion_dict = dict(zip([description[0] for description in cursor.description], promotion))
+    # Convert the promotion object to a dictionary
+    promotion_dict = promotion.__dict__
+    promotion_dict.pop('_sa_instance_state', None)
 
     return promotion_dict
 

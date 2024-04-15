@@ -1,38 +1,45 @@
-import sqlite3
+from constants import initialize_command
+initialize_command()
+
+from backend.postgres.db_utils import _db_session
+from backend.postgres.schema import Sessions, Promotions
 
 # From a session UUID, extract the user and all active promotions to construct a string suitable for an LLM prompt.
 def promotions_tostring(session_id, test=False):
-    # Connect to the SQLite database
-    conn = sqlite3.connect('backend/db/app.db')
-    cursor = conn.cursor()
+    # Connect to the PostgreSQL database
+    session = _db_session()
 
-    cursor.execute('SELECT django_user_id FROM app_sessions WHERE id = ?', (session_id,))
-    django_user_id = cursor.fetchone()[0]
+    # Query the database for the impulse_user_id
+    session_obj = session.query(Sessions).filter(Sessions.id == session_id).first()
+    
+    if session_obj: # if session exists
+        user_impulse_id = session_obj.impulse_user_id
 
-    cursor.execute('SELECT * FROM app_promotions WHERE django_user_id = ?', (django_user_id,))
-    promotions = cursor.fetchall()
+         # Query the database for the promotions
+        user_promotions = session.query(Promotions).filter(Promotions.impulse_user_id == user_impulse_id).all()
 
-    conn.close()
+        session.close()
+    else:
+        session.close()
+        return ""
 
     promotion_string = ""
-    for promotion_tuple in promotions:
-        promotion_string += f"<promotion id={promotion_tuple[0]}>\n"
-        is_ai_generated = promotion_tuple[11]
+    for p in user_promotions:
+        promotion_string += f"<promotion id={p.id}>\n"
+        is_ai_generated = p.is_ai_generated
         if is_ai_generated:
-            ai_columns = promotion_tuple[6:11]
-            promotion_string += f"Description of this promotion's target audience: {ai_columns[0]}\n"
+            promotion_string += f"Description of this promotion's target audience: {p.ai_description}\n"
             if ai_columns[1]: # this means the range is in dollars
-                promotion_string += f"Range of possible discount in USD: from {ai_columns[2]} to {ai_columns[1]}\n"
+                promotion_string += f"Range of possible discount in USD: from {p.ai_discount_dollars_min} to {p.ai_discount_dollars_max}\n"
             else: # range in percent
-                promotion_string += f"Range of possible discount in percent off: from {ai_columns[4]} to {ai_columns[3]}\n"
+                promotion_string += f"Range of possible discount in percent off: from {p.ai_discount_percent_min} to {p.ai_discount_percent_max}\n"
         else:
-            nonai_columns = promotion_tuple[1:5] + tuple([promotion_tuple[12]])
-            promotion_string += f"Title of the promotion: {nonai_columns[4]}\n"
-            promotion_string += f"Description of the promotion: {nonai_columns[1]}\n"
+            promotion_string += f"Title of the promotion: {p.display_title}\n"
+            promotion_string += f"Description of the promotion: {p.display_description}\n"
             if nonai_columns[3]: # dollars
-                promotion_string += f"Discount in USD: {nonai_columns[3]}\n"
+                promotion_string += f"Discount in USD: {p.discount_dollars}\n"
             else:
-                promotion_string += f"Discount in percent off: {nonai_columns[2]}\n"
+                promotion_string += f"Discount in percent off: {p.discount_percent}\n"
         promotion_string += "</promotion>\n"
 
     if test:

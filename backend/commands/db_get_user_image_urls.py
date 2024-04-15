@@ -1,17 +1,25 @@
-import sqlite3
+from constants import initialize_command
+initialize_command()
+
+from backend.postgres.db_utils import _db_session
+from backend.postgres.schema import Sessions, Promotions
 
 # From a session UUID, extract the user and return a list of all image urls used on their active promotions
 def get_user_image_urls(session_id):
-    # Connect to the SQLite database
-    conn = sqlite3.connect('backend/db/app.db')
-    cursor = conn.cursor()
+    # Connect to the PostgreSQL database
+    session = _db_session()
 
-    cursor.execute('SELECT django_user_id FROM app_sessions WHERE id = ?', (session_id,))
-    django_user_id = cursor.fetchone()[0]
+    # Query the database for the impulse_user_id
+    session_obj = session.query(Sessions).filter(Sessions.id == session_id).first()
+    
+    if session_obj: # if session exists
+        user_impulse_id = session_obj.impulse_user_id
 
-    cursor.execute('SELECT image_url FROM app_promotions WHERE django_user_id = ?', (django_user_id,))
-    image_urls = cursor.fetchall()
+         # Query the database for the promotions
+        user_promotions = session.query(Promotions).filter(Promotions.impulse_user_id == user_impulse_id).all()
 
-    conn.close()
-
-    return [promotion[0] for promotion in image_urls]
+        session.close()
+        return [promotion.image_url for promotion in user_promotions]
+    else:
+        session.close()
+        return []
