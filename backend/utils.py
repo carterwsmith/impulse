@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from commands.db_promotions_tostring import promotions_tostring
 from commands.db_session_tostring import session_tostring
 from postgres.db_utils import _db_session
+from postgres.schema import Promotions
 
 load_dotenv()
 
