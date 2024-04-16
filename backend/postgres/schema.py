@@ -51,6 +51,7 @@ class Promotions(Base):
     __tablename__ = 'Promotions'
     id = Column(Integer, primary_key=True, autoincrement=True)
     impulse_user_id = Column(Integer, ForeignKey('ImpulseUser.id'))
+    is_active = Column(Boolean, default=True)
     is_ai_generated = Column(Boolean, default=False)
     ai_description = Column(Text, nullable=True)
     ai_discount_percent_min = Column(Float, nullable=True)
