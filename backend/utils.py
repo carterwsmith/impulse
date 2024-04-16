@@ -76,6 +76,31 @@ def promotion_id_to_dict(promotion_id):
 
     return promotion_dict
 
+def impulse_user_id_to_promotion_ids(impulse_user_id):
+    # Connect to the PostgreSQL database
+    session = _db_session()
+
+    promotions = session.query(Promotions).filter(Promotions.impulse_user_id == impulse_user_id)
+
+    session.close()
+
+    if promotions:
+        # Convert the promotion objects to a list of ids
+        promotion_ids = [promotion.id for promotion in promotions]
+        return promotion_ids
+    else:
+        return None
+
+def impulse_user_id_to_promotion_dict_list(impulse_user_id):
+    user_promotion_ids = impulse_user_id_to_promotion_ids(impulse_user_id)
+    if user_promotion_ids:
+        output = []
+        for i in user_promotion_ids:
+            output.append(promotion_id_to_dict(i))
+        return output
+    else:
+        return []
+
 def promotion_html_template(discount, title, description, discount_code, image_url="https://content.api.news/v3/images/bin/82b374759b87b7e45eb5dbb04157d7cc"):
     return '''<div id="impulse-promotion"
     style="position:fixed !important; top:0 !important; left:0 !important; width:100% !important; height:100% !important; background-color:rgba(0,0,0,0.5); display:flex; justify-content:center; align-items:center; z-index: 9999;">

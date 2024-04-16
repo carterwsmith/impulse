@@ -10,7 +10,7 @@ from sqlalchemy.orm import joinedload
 
 from constants import ACTIVE_SESSION_TIMEOUT_MINUTES, SOCKETIO_BACKGROUND_TASK_DELAY_SECONDS
 from commands.db_get_user_image_urls import get_user_image_urls
-from utils import pagevisit_to_root_domain, prompt_claude_session_context, promotion_id_to_dict, promotion_html_template
+from utils import pagevisit_to_root_domain, prompt_claude_session_context, promotion_id_to_dict, promotion_html_template, impulse_user_id_to_promotion_dict_list
 from postgres.db_utils import _db_session
 from postgres.schema import ImpulseUser, Sessions, PageVisits, MouseMovements, LLMResponses
 
@@ -158,6 +158,11 @@ def handle_page_visit_end(data):
         page_visit.end_time = data['endTime']
         session.commit()
         session.close()
+
+@app.route('/user_promotions/<int:user_id>', methods=['GET'])
+def get_user_promotions(user_id):
+    promotion_dict_list = impulse_user_id_to_promotion_dict_list(user_id)
+    return jsonify(promotion_dict_list)
 
 if __name__ == '__main__':
     socketio.start_background_task(prompt_active_sessions_background_task)
