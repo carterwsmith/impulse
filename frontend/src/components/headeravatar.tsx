@@ -10,6 +10,7 @@ import {
     DropdownMenuTrigger,
   } from "@/components/ui/dropdown-menu"
 import { signOut } from "next-auth/react"
+import Image from 'next/image'
   
 
 export default function HeaderAvatar() {
@@ -17,7 +18,9 @@ export default function HeaderAvatar() {
         <DropdownMenu>
             <DropdownMenuTrigger>
                 <Avatar>
-                    <AvatarImage src="https://github.com/shadcn.png" />
+                    <AvatarImage asChild src="/png/ggp.png">
+                        <Image src={`/png/ggp.png`} alt="" width="64" height="64"/>
+                    </AvatarImage>
                     <AvatarFallback>o</AvatarFallback>
                 </Avatar>
             </DropdownMenuTrigger>
