@@ -29,14 +29,14 @@ def promotions_tostring(session_id, test=False):
         is_ai_generated = p.is_ai_generated
         if is_ai_generated:
             promotion_string += f"Description of this promotion's target audience: {p.ai_description}\n"
-            if ai_columns[1]: # this means the range is in dollars
+            if p.ai_discount_dollars_min: # this means the range is in dollars
                 promotion_string += f"Range of possible discount in USD: from {p.ai_discount_dollars_min} to {p.ai_discount_dollars_max}\n"
             else: # range in percent
                 promotion_string += f"Range of possible discount in percent off: from {p.ai_discount_percent_min} to {p.ai_discount_percent_max}\n"
         else:
             promotion_string += f"Title of the promotion: {p.display_title}\n"
             promotion_string += f"Description of the promotion: {p.display_description}\n"
-            if nonai_columns[3]: # dollars
+            if p.discount_dollars: # dollars
                 promotion_string += f"Discount in USD: {p.discount_dollars}\n"
             else:
                 promotion_string += f"Discount in percent off: {p.discount_percent}\n"
