@@ -12,7 +12,7 @@ from constants import ACTIVE_SESSION_TIMEOUT_MINUTES, SOCKETIO_BACKGROUND_TASK_D
 from commands.db_get_user_image_urls import get_user_image_urls
 from utils import pagevisit_to_root_domain, prompt_claude_session_context, promotion_id_to_dict, promotion_html_template, impulse_user_id_to_promotion_dict_list, impulse_user_id_to_sessions_dict_list
 from postgres.db_utils import _db_session
-from postgres.schema import ImpulseUser, Sessions, PageVisits, MouseMovements, LLMResponses
+from postgres.schema import ImpulseUser, ImpulseSessions, PageVisits, MouseMovements, LLMResponses
 
 app = Flask(__name__)
 CORS(app)
@@ -123,7 +123,7 @@ def handle_page_visit(data):
     
     ## create session if needed
     # Check if the session exists
-    session_exists = session.query(Sessions).filter(Sessions.id == data['session_id']).first()
+    session_exists = session.query(ImpulseSessions).filter(ImpulseSessions.id == data['session_id']).first()
     
     # If the session does not exist, create it
     if not session_exists:
@@ -131,7 +131,7 @@ def handle_page_visit(data):
         # probably need some error handling here too
         user_id = session.query(ImpulseUser.id).filter(ImpulseUser.root_domain.like('%' + extracted_root_domain + '%')).first()
         if user_id:
-            new_session = Sessions(id=data['session_id'], impulse_user_id=user_id[0])
+            new_session = ImpulseSessions(id=data['session_id'], impulse_user_id=user_id[0])
             session.add(new_session)
             session.commit()
         else:
@@ -139,7 +139,7 @@ def handle_page_visit(data):
             # THIS IS JUST FOR TESTING!!!!! USES ADMIN USER ID AND SHOULD BE CHANGED!!!!
             #
             # If no user_id is found for the domain, insert with user_id 1
-            new_session = Sessions(id=data['session_id'], impulse_user_id=1)
+            new_session = ImpulseSessions(id=data['session_id'], impulse_user_id=1)
             session.add(new_session)
             session.commit()
 

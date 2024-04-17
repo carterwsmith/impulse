@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from commands.db_promotions_tostring import promotions_tostring
 from commands.db_session_tostring import session_tostring
 from postgres.db_utils import _db_session
-from postgres.schema import Promotions, Sessions
+from postgres.schema import Promotions, ImpulseSessions
 
 load_dotenv()
 
@@ -104,7 +104,7 @@ def impulse_user_id_to_promotion_dict_list(impulse_user_id):
 def impulse_user_id_to_sessions_dict_list(impulse_user_id):
     # Connect to the PostgreSQL database
     session = _db_session()
-    user_sessions = session.query(Sessions).filter(Sessions.impulse_user_id == impulse_user_id)
+    user_sessions = session.query(ImpulseSessions).filter(ImpulseSessions.impulse_user_id == impulse_user_id)
     session.close()
 
     output = []

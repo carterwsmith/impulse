@@ -12,18 +12,19 @@ Base = declarative_base()
 class ImpulseUser(Base):
     __tablename__ = 'ImpulseUser'
     id = Column(Integer, primary_key=True)
+    auth_id = Column(Integer, ForeignKey('users.id'))
     root_domain = Column(String(255), nullable=True)
     is_domain_configured = Column(Boolean, default=False)
 
-class Sessions(Base):
-    __tablename__ = 'Sessions'
+class ImpulseSessions(Base):
+    __tablename__ = 'ImpulseSessions'
     id = Column(Text, primary_key=True)
     impulse_user_id = Column(Integer, ForeignKey('ImpulseUser.id'))
 
 class PageVisits(Base):
     __tablename__ = 'PageVisits'
     pagevisit_token = Column(Text, unique=True, primary_key=True)
-    session_id = Column(Text, ForeignKey('Sessions.id'))
+    session_id = Column(Text, ForeignKey('ImpulseSessions.id'))
     page_path = Column(Text)
     start_time = Column(BigInteger)
     end_time = Column(BigInteger, nullable=True)
@@ -31,7 +32,7 @@ class PageVisits(Base):
 class MouseMovements(Base):
     __tablename__ = 'MouseMovements'
     id = Column(Integer, primary_key=True, autoincrement=True)
-    session_id = Column(Text, ForeignKey('Sessions.id'))
+    session_id = Column(Text, ForeignKey('ImpulseSessions.id'))
     pagevisit_token_id = Column(Text, ForeignKey('PageVisits.pagevisit_token'))
     position_x = Column(Integer)
     position_y = Column(Integer)
@@ -41,7 +42,7 @@ class MouseMovements(Base):
 class LLMResponses(Base):
     __tablename__ = 'LLMResponses'
     id = Column(Integer, primary_key=True, autoincrement=True)
-    session_id = Column(Text, ForeignKey('Sessions.id'))
+    session_id = Column(Text, ForeignKey('ImpulseSessions.id'))
     response = Column(Text)
     recorded_at = Column(BigInteger)
     is_emitted = Column(Boolean, default=False)
