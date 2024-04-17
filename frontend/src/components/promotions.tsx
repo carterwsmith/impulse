@@ -1,8 +1,8 @@
-import { DTable } from "@/components/dtable";
+import { PromotionsTable } from "@/components/promotionstable";
 
 function Promotions() {
     return (
-        <DTable/>
+        <PromotionsTable/>
     )
 }
 
