@@ -3,12 +3,11 @@
 import * as React from "react"
 import {
   CaretSortIcon,
-  ChevronDownIcon,
-  DotsHorizontalIcon,
-  CheckIcon,
-  CrossCircledIcon,
+  PlusIcon,
   MagicWandIcon,
   PersonIcon,
+  Pencil2Icon,
+  TrashIcon,
 } from "@radix-ui/react-icons"
 import {
   ColumnDef,
@@ -22,18 +21,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table"
-
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import {
   Table,
@@ -43,111 +31,264 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-
-const data: Promotion[] = [
-  {
-    id: 1,
-    status: true,
-    name: "example promo",
-    ai: true,
-  },
-]
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
+import { toast } from "sonner"
+import AddPromotionForm from "@/components/addpromotionform"
 
 export type Promotion = {
   id: number
-  status: boolean
-  name: string
-  ai: boolean
+  is_active: boolean
+  promotion_name: string
+  display_description: string
+  ai_description: string
+  is_ai_generated: boolean
 }
 
-export const columns: ColumnDef<Promotion>[] = [
-  {
-    id: "select",
-    header: ({ table }) => (
-      <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && "indeterminate")
-        }
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Select row"
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
-  {
-    accessorKey: "status",
-    header: "Status",
-    cell: ({ row }) => (
-      <div>
-        {row.getValue("status") ? <CheckIcon /> : <CrossCircledIcon />}
-      </div>
-    ),
-  },
-  {
-    accessorKey: "name",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Name
-          <CaretSortIcon className="ml-2 h-4 w-4" />
-        </Button>
-      )
-    },
-    cell: ({ row }) => <div className="lowercase">{row.getValue("name")}</div>,
-  },
-  {
-    accessorKey: "AI",
-    header: () => <div className="">AI / Manual</div>,
-    cell: ({ row }) => {
-      return (<div>
-        {row.getValue("AI") ? <MagicWandIcon /> : <PersonIcon />}
-      </div>);
-    },
-  },
-  {
-    id: "actions",
-    enableHiding: false,
-    cell: ({ row }) => {
-      const promotion = row.original
+interface PromotionsTableProps {
+  session_user_id: any;
+}
 
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Open menu</span>
-              <DotsHorizontalIcon className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem
-              onClick={() => navigator.clipboard.writeText(promotion.id.toString())}
-            >
-              Copy payment ID
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>View customer</DropdownMenuItem>
-            <DropdownMenuItem>View payment details</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )
-    },
-  },
-]
+export function PromotionsTable({ session_user_id }: PromotionsTableProps) {
+  const [data, setData] = React.useState<Promotion[]>([]);
+  const [editPromotionDialogOpen, setEditPromotionDialogOpen] = React.useState(false);
 
-export function PromotionsTable() {
+  const fetchData = React.useCallback(() => {
+    fetch(`http://localhost:5000/user_promotions/${session_user_id}`)
+      .then(response => response.json())
+      .then(data => {
+        setData(data);
+      });
+  }, [session_user_id]);
+
+  React.useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const columns: ColumnDef<Promotion>[] = [
+    // {
+    //   id: "select",
+    //   header: ({ table }) => (
+    //     <Checkbox
+    //       checked={
+    //         table.getIsAllPageRowsSelected() ||
+    //         (table.getIsSomePageRowsSelected() && "indeterminate")
+    //       }
+    //       onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+    //       aria-label="Select all"
+    //     />
+    //   ),
+    //   cell: ({ row }) => (
+    //     <Checkbox
+    //       checked={row.getIsSelected()}
+    //       onCheckedChange={(value) => row.toggleSelected(!!value)}
+    //       aria-label="Select row"
+    //     />
+    //   ),
+    //   enableSorting: false,
+    //   enableHiding: false,
+    // },
+    {
+      accessorKey: "is_active",
+      header: "Active",
+      cell: ({ row }) => (
+        <div>
+          {/* {row.getValue("is_active") ? <CheckIcon /> : <CrossCircledIcon />} */}
+          <Switch 
+            defaultChecked={row.getValue("is_active")} 
+            onCheckedChange={(checked) => {
+              fetch(`http://localhost:5000/promotions/update/${row.original.id}`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ is_active: checked }),
+              })
+              .then(response => response.json())
+              .then(data => {
+                // emit toast
+                toast(`'${row.getValue("promotion_name")}' promotion set to ${data['values']['is_active'] ? "active" : "inactive"}.`)
+              })
+            }}
+          />
+        </div>
+      ),
+    },
+    {
+      accessorKey: "promotion_name",
+      header: ({ column }) => {
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            Name
+            <CaretSortIcon className="ml-2 h-4 w-4" />
+          </Button>
+        )
+      },
+      cell: ({ row }) => <div className="lowercase">{row.getValue("promotion_name")}</div>,
+    },
+    {
+      accessorKey: "display_description",
+      header: () => <div className="">Description</div>,
+      cell: ({ row }) => {
+        let res : String = row.getValue(row.getValue("display_description") ? "display_description" : row.getValue("ai_description"))
+        let sliced : String = res.length > 30 ? res.slice(0, 30) + '...' : res
+        return (<div>
+          {sliced}
+        </div>);
+      },
+    },
+    {
+      accessorKey: "is_ai_generated",
+      header: () => <div className="">AI / Manual</div>,
+      cell: ({ row }) => {
+        return (<div>
+          {row.getValue("is_ai_generated") ? <MagicWandIcon width="20" height="20" /> : <PersonIcon width="20" height="20" />}
+        </div>);
+      },
+    },
+    {
+      id: "edit",
+      header: "Edit",
+      enableHiding: false,
+      cell: ({ row }) => {
+        const promotion = row.original
+  
+        return (
+          <Dialog open={editPromotionDialogOpen} onOpenChange={setEditPromotionDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="icon">
+                    <Pencil2Icon width="20" height="20" />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader>
+                    <DialogTitle>Edit promotion</DialogTitle>
+                    <DialogDescription>
+                      Make changes to your promotion. Click save when you're done.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <form onSubmit={(e) => {
+                    e.preventDefault();
+                    const formData = new FormData(e.target as HTMLFormElement);
+                    const formProps = Object.fromEntries(formData);
+                    fetch(`http://localhost:5000/promotions/update/${promotion.id}`, {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify(formProps),
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                      // Close the dialog after form submission
+                      setEditPromotionDialogOpen(false);
+                      fetchData();
+                      // emit toast
+                      toast(`'${row.getValue("promotion_name")}' promotion successfully edited.`)
+                    })
+                    .catch((error) => {
+                      //console.error('Error:', error);
+                    });
+                  }}>
+                    <div id="promotionEditFormContent" className="grid gap-4 py-4">
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="name" className="text-right">
+                          Promotion Name
+                        </Label>
+                        <Input
+                          name="promotion_name"
+                          defaultValue={promotion.promotion_name}
+                          className="col-span-3"
+                        />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="description" className="text-right">
+                          Description
+                        </Label>
+                        <Input
+                          name={promotion.display_description ? "display_description" : "ai_description"}
+                          defaultValue={promotion.display_description ? promotion.display_description : promotion.ai_description}
+                          className="col-span-3"
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button type="submit">Save changes</Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+          </Dialog>
+        )
+      },
+    },
+    {
+      id: "delete",
+      header: "Delete",
+      enableHiding: false,
+      cell: ({ row }) => {
+        const promotion = row.original
+  
+        return (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button className="bg-red-600 hover:bg-red-800" size="icon">
+                <TrashIcon width="20" height="20" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete this promotion?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. This will permanently delete the promotion <i>{promotion.promotion_name}</i>.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <form onSubmit={(e) => {
+                  e.preventDefault();
+                  fetch(`http://localhost:5000/promotions/delete/${promotion.id}`, {
+                    method: 'DELETE'
+                  })
+                  .then(response => response.json())
+                  .then(data => {
+                    fetchData()
+                    // emit toast
+                    toast(`'${row.getValue("promotion_name")}' promotion successfully deleted.`)
+                  })
+                }}>
+                  <AlertDialogAction type="submit" className="bg-red-600 hover:bg-red-800">Continue</AlertDialogAction>
+                </form>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )
+      },
+    },
+  ]
+
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
@@ -179,14 +320,26 @@ export function PromotionsTable() {
     <div className="w-full">
       <div className="flex items-center py-4">
         <Input
-          placeholder="Filter promotions..."
-          value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
+          placeholder="Filter promotions by name..."
+          value={(table.getColumn("promotion_name")?.getFilterValue() as string) ?? ""}
           onChange={(event) =>
-            table.getColumn("name")?.setFilterValue(event.target.value)
+            table.getColumn("promotion_name")?.setFilterValue(event.target.value)
           }
           className="max-w-sm"
         />
-        <DropdownMenu>
+
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button variant="outline" className="ml-auto bg-gray-900 text-white hover:bg-gray-700 hover:text-white">
+              <PlusIcon className="mr-2 h-4 w-4" /> New promotion 
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <AddPromotionForm />
+          </DialogContent>
+        </Dialog>
+
+        {/* <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="ml-auto">
               Columns <ChevronDownIcon className="ml-2 h-4 w-4" />
@@ -211,7 +364,7 @@ export function PromotionsTable() {
                 )
               })}
           </DropdownMenuContent>
-        </DropdownMenu>
+        </DropdownMenu> */}
       </div>
       <div className="rounded-md border">
         <Table>
@@ -264,10 +417,10 @@ export function PromotionsTable() {
         </Table>
       </div>
       <div className="flex items-center justify-end space-x-2 py-4">
-        <div className="flex-1 text-sm text-muted-foreground">
+        {/* <div className="flex-1 text-sm text-muted-foreground">
           {table.getFilteredSelectedRowModel().rows.length} of{" "}
           {table.getFilteredRowModel().rows.length} row(s) selected.
-        </div>
+        </div> */}
         <div className="space-x-2">
           <Button
             variant="outline"
@@ -290,3 +443,4 @@ export function PromotionsTable() {
     </div>
   )
 }
+

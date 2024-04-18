@@ -1,8 +1,12 @@
 import { PromotionsTable } from "@/components/promotionstable";
 
-function Promotions() {
+interface PromotionsProps {
+    session_user_id: any;
+}
+
+function Promotions({ session_user_id }: PromotionsProps) {
     return (
-        <PromotionsTable/>
+        <PromotionsTable session_user_id={session_user_id}/>
     )
 }
 

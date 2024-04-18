@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from commands.db_promotions_tostring import promotions_tostring
 from commands.db_session_tostring import session_tostring
 from postgres.db_utils import _db_session
-from postgres.schema import Promotions, ImpulseSessions
+from postgres.schema import Promotions, ImpulseSessions, ImpulseUser
 
 load_dotenv()
 
@@ -91,13 +91,24 @@ def impulse_user_id_to_promotion_ids(impulse_user_id):
     else:
         return None
 
-def impulse_user_id_to_promotion_dict_list(impulse_user_id):
-    user_promotion_ids = impulse_user_id_to_promotion_ids(impulse_user_id)
-    if user_promotion_ids:
-        output = []
-        for i in user_promotion_ids:
-            output.append(promotion_id_to_dict(i))
-        return output
+def auth_user_id_to_promotion_dict_list(auth_user_id):
+    # Connect to the PostgreSQL database
+    session = _db_session()
+
+    impulse_user_obj = session.query(ImpulseUser).filter(ImpulseUser.auth_id == auth_user_id).first()
+
+    session.close()
+
+    if impulse_user_obj:
+        impulse_user_id = impulse_user_obj.id
+        user_promotion_ids = impulse_user_id_to_promotion_ids(impulse_user_id)
+        if user_promotion_ids:
+            output = []
+            for i in user_promotion_ids:
+                output.append(promotion_id_to_dict(i))
+            return output
+        else:
+            return []
     else:
         return []
 

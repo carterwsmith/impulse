@@ -10,9 +10,9 @@ from sqlalchemy.orm import joinedload
 
 from constants import ACTIVE_SESSION_TIMEOUT_MINUTES, SOCKETIO_BACKGROUND_TASK_DELAY_SECONDS
 from commands.db_get_user_image_urls import get_user_image_urls
-from utils import pagevisit_to_root_domain, prompt_claude_session_context, promotion_id_to_dict, promotion_html_template, impulse_user_id_to_promotion_dict_list, impulse_user_id_to_sessions_dict_list
+from utils import pagevisit_to_root_domain, prompt_claude_session_context, promotion_id_to_dict, promotion_html_template, auth_user_id_to_promotion_dict_list, impulse_user_id_to_sessions_dict_list
 from postgres.db_utils import _db_session
-from postgres.schema import ImpulseUser, ImpulseSessions, PageVisits, MouseMovements, LLMResponses
+from postgres.schema import ImpulseUser, ImpulseSessions, PageVisits, MouseMovements, LLMResponses, Promotions
 
 app = Flask(__name__)
 CORS(app)
@@ -161,8 +161,38 @@ def handle_page_visit_end(data):
 
 @app.route('/user_promotions/<int:user_id>', methods=['GET'])
 def get_user_promotions(user_id):
-    promotion_dict_list = impulse_user_id_to_promotion_dict_list(user_id)
+    promotion_dict_list = auth_user_id_to_promotion_dict_list(user_id)
     return jsonify(promotion_dict_list)
+
+@app.route('/promotions/update/<int:promotion_id>', methods=['POST'])
+def update_promotion(promotion_id):
+    session = _db_session()
+    promotion = session.query(Promotions).filter(Promotions.id == promotion_id).first()
+    if promotion:
+        data = request.get_json()
+        for key, value in data.items():
+            try:
+                setattr(promotion, key, value)
+            except Exception as e:
+                session.rollback()
+                return jsonify({'error': str(e)}), 500
+        try:
+            session.commit()
+        except Exception as e:
+            session.rollback()
+            return jsonify({'error': str(e)}), 500
+    session.close()
+    return jsonify({'success': True, 'promotion_id': promotion_id, 'values': data}), 200
+
+@app.route('/promotions/delete/<int:promotion_id>', methods=['DELETE'])
+def delete_promotion(promotion_id):
+    session = _db_session()
+    promotion = session.query(Promotions).filter(Promotions.id == promotion_id).first()
+    if promotion:
+        session.delete(promotion)
+        session.commit()
+        session.close()
+    return jsonify({'success': True, 'promotion_id_deleted': promotion_id}), 200
 
 @app.route('/user_sessions/<int:user_id>', methods=['GET'])
 def get_user_sessions(user_id):
