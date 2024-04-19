@@ -104,7 +104,7 @@ def auth_user_id_to_promotion_dict_list(auth_user_id):
         user_promotion_ids = impulse_user_id_to_promotion_ids(impulse_user_id)
         if user_promotion_ids:
             output = []
-            for i in user_promotion_ids:
+            for i in sorted(user_promotion_ids):
                 output.append(promotion_id_to_dict(i))
             return output
         else:

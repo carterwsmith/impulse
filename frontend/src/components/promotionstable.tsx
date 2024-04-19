@@ -92,7 +92,7 @@ export function PromotionsTable({ session_user_id }: PromotionsTableProps) {
 
    async function fetchData() {
     setIsLoading(true); // Set loading to true when fetch starts
-    fetch(`http://localhost:5000/user_promotions/${session_user_id}`)
+    fetch(`http://localhost:5000/promotions/get/user/${session_user_id}`)
       .then(response => response.json())
       .then(data => {
         //console.log(data)

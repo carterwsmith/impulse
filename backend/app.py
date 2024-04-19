@@ -159,7 +159,7 @@ def handle_page_visit_end(data):
         session.commit()
         session.close()
 
-@app.route('/user_promotions/<int:user_id>', methods=['GET'])
+@app.route('/promotions/get/user/<int:user_id>', methods=['GET'])
 def get_user_promotions(user_id):
     promotion_dict_list = auth_user_id_to_promotion_dict_list(user_id)
     return jsonify(promotion_dict_list)
