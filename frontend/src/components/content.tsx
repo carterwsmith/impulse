@@ -11,7 +11,7 @@ interface ContentProps {
 function Content({ session_user_id }: ContentProps) {
     return (
         <>
-            <Header/>
+            <Header session_user_id={session_user_id}/>
 
             <div className="w-full mx-auto flex justify-center">
                 <Tabs defaultValue="promotions" className="w-[80%]">

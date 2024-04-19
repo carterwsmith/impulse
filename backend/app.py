@@ -11,7 +11,7 @@ from sqlalchemy.orm import joinedload
 from constants import ACTIVE_SESSION_TIMEOUT_MINUTES, SOCKETIO_BACKGROUND_TASK_DELAY_SECONDS
 from commands.db_get_user_image_urls import get_user_image_urls
 from utils import pagevisit_to_root_domain, prompt_claude_session_context, promotion_id_to_dict, promotion_html_template, auth_user_id_to_promotion_dict_list, impulse_user_id_to_sessions_dict_list
-from postgres.db_utils import _db_session
+from postgres.db_utils import _db_session, get_user_row
 from postgres.schema import ImpulseUser, ImpulseSessions, PageVisits, MouseMovements, LLMResponses, Promotions
 
 app = Flask(__name__)
@@ -257,6 +257,17 @@ def add_promotion():
 def get_user_sessions(user_id):
     session_dict_list = impulse_user_id_to_sessions_dict_list(user_id)
     return jsonify(session_dict_list)
+
+@app.route('/user/<int:user_id>', methods=['GET'])
+def get_user_info(user_id):
+    try:
+        user_dict = get_user_row(user_id)
+        if user_dict is not None:
+            return jsonify(user_dict), 200
+        else:
+            return jsonify({'error': 'User not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     socketio.start_background_task(prompt_active_sessions_background_task)
