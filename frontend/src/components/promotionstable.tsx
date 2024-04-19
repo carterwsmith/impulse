@@ -51,6 +51,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import {
+  Skeleton
+} from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
@@ -82,17 +85,20 @@ interface PromotionsTableProps {
 
 export function PromotionsTable({ session_user_id }: PromotionsTableProps) {
   const [data, setData] = React.useState<Promotion[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true); // Add loading state
   const [editPromotionDialogOpen, setEditPromotionDialogOpen] = React.useState(false);
   const [addPromotionDialogOpen, setAddPromotionDialogOpen] = React.useState(false);
 
    async function fetchData() {
+    setIsLoading(true); // Set loading to true when fetch starts
     fetch(`http://localhost:5000/user_promotions/${session_user_id}`)
       .then(response => response.json())
       .then(data => {
         //console.log(data)
         setData(data);
-      });
-  };
+      })
+      .finally(() => setIsLoading(false)); // Set loading to false when fetch is complete
+    }
 
   React.useEffect(() => {
      fetchData();
@@ -405,7 +411,19 @@ export function PromotionsTable({ session_user_id }: PromotionsTableProps) {
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
+            {isLoading ? (
+              // Render skeleton components when data is loading
+              Array.from({ length: 5 }).map((_, index) => (
+                <TableRow key={index}>
+                  {Array.from({ length: columns.length }).map((_, cellIndex) => (
+                    <TableCell key={cellIndex}>
+                      <Skeleton className="w-[100px] h-[20px] rounded-full" />
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : table.getRowModel().rows?.length ? (
+              // Your existing code for rendering rows
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
