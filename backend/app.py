@@ -166,10 +166,35 @@ def get_user_promotions(user_id):
 
 @app.route('/promotions/update/<int:promotion_id>', methods=['POST'])
 def update_promotion(promotion_id):
+    request_json = request.get_json()
+
+    ai_keys = [
+        "ai_description",
+        "ai_discount_percent_min",
+        "ai_discount_percent_max",
+        "ai_discount_dollars_min",
+        "ai_discount_dollars_max",
+    ]
+    non_ai_keys = [
+        "image_url",
+        "display_title",
+        "display_description",
+        "discount_percent",
+        "discount_dollars",
+        "discount_code",
+    ]
+    # If the promotion is ai generated, null all the non-ai keys, otherwise null the ai keys
+    if request_json["is_ai_generated"]:
+        for key in non_ai_keys:
+            request_json[key] = None
+    else:
+        for key in ai_keys:
+            request_json[key] = None
+
     session = _db_session()
     promotion = session.query(Promotions).filter(Promotions.id == promotion_id).first()
     if promotion:
-        data = request.get_json()
+        data = request_json
         for key, value in data.items():
             try:
                 setattr(promotion, key, value)

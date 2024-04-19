@@ -58,6 +58,7 @@ import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import AddPromotionForm from "@/components/addpromotionform"
+import EditPromotionForm from "@/components/editpromotionform"
 
 export type Promotion = {
   id: number;
@@ -86,7 +87,7 @@ interface PromotionsTableProps {
 export function PromotionsTable({ session_user_id }: PromotionsTableProps) {
   const [data, setData] = React.useState<Promotion[]>([]);
   const [isLoading, setIsLoading] = React.useState(true); // Add loading state
-  const [editPromotionDialogOpen, setEditPromotionDialogOpen] = React.useState(false);
+  const [editPromotionIdOpen, setEditPromotionIdOpen] = React.useState<number | null>(null);
   const [addPromotionDialogOpen, setAddPromotionDialogOpen] = React.useState(false);
 
    async function fetchData() {
@@ -201,69 +202,15 @@ export function PromotionsTable({ session_user_id }: PromotionsTableProps) {
         const promotion = row.original
   
         return (
-          <Dialog open={editPromotionDialogOpen} onOpenChange={setEditPromotionDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="icon">
-                    <Pencil2Icon width="20" height="20" />
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px]">
-                  <DialogHeader>
-                    <DialogTitle>Edit promotion</DialogTitle>
-                    <DialogDescription>
-                      Make changes to your promotion. Click save when you're done.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <form onSubmit={(e) => {
-                    e.preventDefault();
-                    const formData = new FormData(e.target as HTMLFormElement);
-                    const formProps = Object.fromEntries(formData);
-                    fetch(`http://localhost:5000/promotions/update/${promotion.id}`, {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                      },
-                      body: JSON.stringify(formProps),
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                      // Close the dialog after form submission
-                      setEditPromotionDialogOpen(false);
-                      fetchData();
-                      // emit toast
-                      toast(`'${row.getValue("promotion_name")}' promotion successfully edited.`)
-                    })
-                    .catch((error) => {
-                      //console.error('Error:', error);
-                    });
-                  }}>
-                    <div id="promotionEditFormContent" className="grid gap-4 py-4">
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="name" className="text-right">
-                          Promotion Name
-                        </Label>
-                        <Input
-                          name="promotion_name"
-                          defaultValue={promotion.promotion_name}
-                          className="col-span-3"
-                        />
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="description" className="text-right">
-                          Description
-                        </Label>
-                        <Input
-                          name={promotion.display_description ? "display_description" : "ai_description"}
-                          defaultValue={promotion.display_description ? promotion.display_description : promotion.ai_description || ""}
-                          className="col-span-3"
-                        />
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button type="submit">Save changes</Button>
-                    </DialogFooter>
-                  </form>
-                </DialogContent>
+          <Dialog open={editPromotionIdOpen === promotion.id} onOpenChange={(isOpen) => setEditPromotionIdOpen(isOpen ? promotion.id : null)}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="icon">
+                <Pencil2Icon width="20" height="20" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+                <EditPromotionForm edited_promotion={promotion} session_user_id={session_user_id} dialogSetter={setEditPromotionIdOpen} tableDataFetcher={fetchData} />
+            </DialogContent>
           </Dialog>
         )
       },
