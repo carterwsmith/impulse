@@ -194,6 +194,40 @@ def delete_promotion(promotion_id):
         session.close()
     return jsonify({'success': True, 'promotion_id_deleted': promotion_id}), 200
 
+@app.route('/promotions/add', methods=['POST'])
+def add_promotion():
+    request_json = request.get_json()
+
+    ai_keys = [
+        "ai_description",
+        "ai_discount_percent_min",
+        "ai_discount_percent_max",
+        "ai_discount_dollars_min",
+        "ai_discount_dollars_max",
+    ]
+    non_ai_keys = [
+        "image_url",
+        "display_title",
+        "display_description",
+        "discount_percent",
+        "discount_dollars",
+        "discount_code",
+    ]
+    # If the promotion is ai generated, null all the non-ai keys, otherwise null the ai keys
+    if request_json["is_ai_generated"]:
+        for key in non_ai_keys:
+            request_json[key] = None
+    else:
+        for key in ai_keys:
+            request_json[key] = None
+
+    session = _db_session()
+    promotion = Promotions(**request_json)
+    session.add(promotion)
+    session.commit()
+    session.close()
+    return jsonify({'success': True}), 200
+
 @app.route('/user_sessions/<int:user_id>', methods=['GET'])
 def get_user_sessions(user_id):
     session_dict_list = impulse_user_id_to_sessions_dict_list(user_id)

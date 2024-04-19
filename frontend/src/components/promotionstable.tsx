@@ -57,13 +57,24 @@ import { toast } from "sonner"
 import AddPromotionForm from "@/components/addpromotionform"
 
 export type Promotion = {
-  id: number
-  is_active: boolean
-  promotion_name: string
-  display_description: string
-  ai_description: string
-  is_ai_generated: boolean
-}
+  id: number;
+  is_active: boolean;
+  promotion_name: string;
+  display_description: string | null;
+  ai_description: string | null;
+  is_ai_generated: boolean;
+  // Add additional fields from your data sample here
+  ai_discount_dollars_max: number | null;
+  ai_discount_dollars_min: number | null;
+  ai_discount_percent_max: number | null;
+  ai_discount_percent_min: number | null;
+  discount_code: string | null;
+  discount_dollars: number | null;
+  discount_percent: number | null;
+  display_title: string | null;
+  image_url: string | null;
+  impulse_user_id: number;
+};
 
 interface PromotionsTableProps {
   session_user_id: any;
@@ -72,18 +83,20 @@ interface PromotionsTableProps {
 export function PromotionsTable({ session_user_id }: PromotionsTableProps) {
   const [data, setData] = React.useState<Promotion[]>([]);
   const [editPromotionDialogOpen, setEditPromotionDialogOpen] = React.useState(false);
+  const [addPromotionDialogOpen, setAddPromotionDialogOpen] = React.useState(false);
 
-  const fetchData = React.useCallback(() => {
+   async function fetchData() {
     fetch(`http://localhost:5000/user_promotions/${session_user_id}`)
       .then(response => response.json())
       .then(data => {
+        //console.log(data)
         setData(data);
       });
-  }, [session_user_id]);
+  };
 
   React.useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+     fetchData();
+  }, [session_user_id]);
 
   const columns: ColumnDef<Promotion>[] = [
     // {
@@ -153,7 +166,12 @@ export function PromotionsTable({ session_user_id }: PromotionsTableProps) {
       accessorKey: "display_description",
       header: () => <div className="">Description</div>,
       cell: ({ row }) => {
-        let res : String = row.getValue(row.getValue("display_description") ? "display_description" : row.getValue("ai_description"))
+        // First, try to get the display_description
+        let res : any = row.getValue("display_description");
+        // If display_description is null or undefined, use ai_description
+        if (res == null) {
+          res = row.original.ai_description;
+        }
         let sliced : String = res.length > 30 ? res.slice(0, 30) + '...' : res
         return (<div>
           {sliced}
@@ -230,7 +248,7 @@ export function PromotionsTable({ session_user_id }: PromotionsTableProps) {
                         </Label>
                         <Input
                           name={promotion.display_description ? "display_description" : "ai_description"}
-                          defaultValue={promotion.display_description ? promotion.display_description : promotion.ai_description}
+                          defaultValue={promotion.display_description ? promotion.display_description : promotion.ai_description || ""}
                           className="col-span-3"
                         />
                       </div>
@@ -328,14 +346,14 @@ export function PromotionsTable({ session_user_id }: PromotionsTableProps) {
           className="max-w-sm"
         />
 
-        <Dialog>
+        <Dialog open={addPromotionDialogOpen} onOpenChange={setAddPromotionDialogOpen}>
           <DialogTrigger asChild>
             <Button variant="outline" className="ml-auto bg-gray-900 text-white hover:bg-gray-700 hover:text-white">
               <PlusIcon className="mr-2 h-4 w-4" /> New promotion 
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
-            <AddPromotionForm />
+            <AddPromotionForm session_user_id={session_user_id} dialogSetter={setAddPromotionDialogOpen} tableDataFetcher={fetchData} />
           </DialogContent>
         </Dialog>
 
