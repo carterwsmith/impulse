@@ -36,7 +36,7 @@ function Content({ session_user_id }: ContentProps) {
 
             {
                 isUserDataLoading ? (
-                    <div className="w-full mx-auto flex justify-center items-start">
+                    <div className="w-full mx-auto flex justify-center items-start pt-[20%]">
                         <div className="animate-spin">
                             <LoaderCircle size={64} strokeWidth={2} />
                         </div>
