@@ -80,6 +80,15 @@ def url_to_root_domain(page_url):
             return None
     return root_domain
 
+def does_root_domain_exist(root_domain):
+    session = _db_session()
+    
+    user = session.query(ImpulseUser).filter(ImpulseUser.root_domain == root_domain).first()
+    if user:
+        return True
+    else:
+        return False
+
 def promotion_id_to_dict(promotion_id):
     # Connect to the PostgreSQL database
     session = _db_session()

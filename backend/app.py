@@ -11,7 +11,7 @@ from sqlalchemy.orm import joinedload
 
 from constants import ACTIVE_SESSION_TIMEOUT_MINUTES, SOCKETIO_BACKGROUND_TASK_DELAY_SECONDS
 from commands.db_get_user_image_urls import get_user_image_urls
-from utils import pagevisit_to_root_domain, prompt_claude_session_context, promotion_id_to_dict, promotion_html_template, auth_user_id_to_promotion_dict_list, impulse_user_id_to_sessions_dict_list, auth_user_id_to_impulse_user_dict, url_to_root_domain
+from utils import pagevisit_to_root_domain, prompt_claude_session_context, promotion_id_to_dict, promotion_html_template, auth_user_id_to_promotion_dict_list, impulse_user_id_to_sessions_dict_list, auth_user_id_to_impulse_user_dict, url_to_root_domain, does_root_domain_exist
 from postgres.db_utils import _db_session, get_user_row
 from postgres.schema import ImpulseUser, ImpulseSessions, PageVisits, MouseMovements, LLMResponses, Promotions
 
@@ -298,6 +298,8 @@ def onboard(auth_id):
             # co.uk etc error handling can go here
             if not user_root_domain:
                 return jsonify({'status': False, 'message': "Invalid domain"}), 400
+            if does_root_domain_exist(user_root_domain):
+                return jsonify({'status:': False, 'message': "Domain already registered"}), 400
         except Exception as e:
             return jsonify({'status': False, 'message': "Error parsing domain"}), 500
 
