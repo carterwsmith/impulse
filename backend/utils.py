@@ -72,7 +72,7 @@ def url_to_root_domain(page_url):
         match = re.search(r'(?:www\.)?([^/?:]+)', page_url)
         if match:
             parts = match.group(1).split('.')
-            if len(parts) >= 2:
+            if len(parts) >= 2: # set upper bound on this to throw err on co.uk and multi part domain endings
                 root_domain = parts[-2] + '.' + parts[-1]
             else:
                 return None  # Or handle differently if needed

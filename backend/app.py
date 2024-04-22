@@ -87,6 +87,12 @@ def prompt_active_sessions_background_task():
 
 def should_log_mouse_update(session_id, new_x, new_y):
     session = _db_session()
+
+    # if no pagevisits (should just be during onboarding), do not update
+    pagevisits_count = session.query(PageVisits).filter(PageVisits.session_id == session_id).count()
+    if pagevisits_count == 0:
+        return False
+
     now_ms = int(time.time() * 1000)
     one_minute_ago = now_ms - (ACTIVE_SESSION_TIMEOUT_MINUTES * 60000)
     last_position = session.query(MouseMovements.position_x, MouseMovements.position_y).filter(MouseMovements.session_id == session_id, MouseMovements.recorded_at > one_minute_ago).order_by(MouseMovements.recorded_at).first()
