@@ -1,4 +1,5 @@
 from datetime import datetime
+import requests
 import threading
 import time
 
@@ -10,7 +11,7 @@ from sqlalchemy.orm import joinedload
 
 from constants import ACTIVE_SESSION_TIMEOUT_MINUTES, SOCKETIO_BACKGROUND_TASK_DELAY_SECONDS
 from commands.db_get_user_image_urls import get_user_image_urls
-from utils import pagevisit_to_root_domain, prompt_claude_session_context, promotion_id_to_dict, promotion_html_template, auth_user_id_to_promotion_dict_list, impulse_user_id_to_sessions_dict_list
+from utils import pagevisit_to_root_domain, prompt_claude_session_context, promotion_id_to_dict, promotion_html_template, auth_user_id_to_promotion_dict_list, impulse_user_id_to_sessions_dict_list, auth_user_id_to_impulse_user_dict, url_to_root_domain
 from postgres.db_utils import _db_session, get_user_row
 from postgres.schema import ImpulseUser, ImpulseSessions, PageVisits, MouseMovements, LLMResponses, Promotions
 
@@ -117,6 +118,7 @@ def handle_mouse_update(data):
             session.commit()
         session.close()
 
+onboard_domain_set = set()
 @socketio.on('pageVisit')
 def handle_page_visit(data):
     session = _db_session()
@@ -135,13 +137,17 @@ def handle_page_visit(data):
             session.add(new_session)
             session.commit()
         else:
-            #
+            # assume onboarding
+            if extracted_root_domain not in onboard_domain_set:
+                onboard_domain_set.add(extracted_root_domain)
+                return
+
             # THIS IS JUST FOR TESTING!!!!! USES ADMIN USER ID AND SHOULD BE CHANGED!!!!
             #
             # If no user_id is found for the domain, insert with user_id 1
-            new_session = ImpulseSessions(id=data['session_id'], impulse_user_id=1)
-            session.add(new_session)
-            session.commit()
+            # new_session = ImpulseSessions(id=data['session_id'], impulse_user_id=1)
+            # session.add(new_session)
+            # session.commit()
 
     new_page_visit = PageVisits(session_id=data['session_id'], pagevisit_token=data['pageVisitToken'], page_path=data['pagePath'], start_time=data['startTime'], end_time=None)
     session.add(new_page_visit)
@@ -263,12 +269,51 @@ def get_user_sessions(user_id):
 def get_user_info(user_id):
     try:
         user_dict = get_user_row(user_id)
+        impulse_user_dict = auth_user_id_to_impulse_user_dict(user_id)
+        # combine the dicts
+        user_dict.update(impulse_user_dict)
         if user_dict is not None:
             return jsonify(user_dict), 200
         else:
             return jsonify({'error': 'User not found'}), 404
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/user/onboard/<int:auth_id>', methods=['POST'])
+def onboard(auth_id):
+    try:
+        request_json = request.get_json()
+        user_domain = request_json['user_domain']
+        try:
+            # if user domain does not start with https:// or http://, add https://
+            if not user_domain.startswith('https://') and not user_domain.startswith('http://'):
+                user_domain = 'https://' + user_domain
+            user_root_domain = url_to_root_domain(user_domain)
+            # co.uk etc error handling can go here
+            if not user_root_domain:
+                return jsonify({'status': False, 'message': "Invalid domain"}), 400
+        except Exception as e:
+            return jsonify({'status': False, 'message': "Error parsing domain"}), 500
+
+        # make a request to user_domain
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'}
+        response = requests.get(user_domain, headers=headers)
+        # return false if the response is not 200
+        if response.status_code != 200:
+            return jsonify({'status': False, 'message': 'Couldn\'t reach the domain'}), 400
+
+        if user_root_domain in onboard_domain_set:
+            onboard_domain_set.remove(user_root_domain)
+            session = _db_session()
+            session.query(ImpulseUser).filter(ImpulseUser.auth_id == auth_id).update({ImpulseUser.root_domain: user_root_domain, ImpulseUser.is_domain_configured: True})
+            session.commit()
+            session.close()
+
+            return jsonify({'status': True, 'auth_id': auth_id, 'domain': user_domain, 'root_domain': user_root_domain}), 200
+    except Exception as e:
+        return jsonify({'status': False, 'message': str(e)}), 500
+
+    return jsonify({'status': False, 'message': 'Onpulse.js not detected'}), 500
 
 if __name__ == '__main__':
     socketio.start_background_task(prompt_active_sessions_background_task)

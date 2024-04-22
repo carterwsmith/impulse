@@ -62,6 +62,24 @@ def pagevisit_to_root_domain(data):
         return None
     return root_domain
 
+def url_to_root_domain(page_url):
+    # Extract the root domain using a regular expression
+    match = re.search(r'(?<=://)(?:www\.)?([^/?:]+)', page_url)
+    if match:
+        root_domain = match.group(1).split('.')[-2] + '.' + match.group(1).split('.')[-1]
+    else:
+        # If the URL doesn't start with 'http://' or 'https://', we assume it's already a root domain
+        match = re.search(r'(?:www\.)?([^/?:]+)', page_url)
+        if match:
+            parts = match.group(1).split('.')
+            if len(parts) >= 2:
+                root_domain = parts[-2] + '.' + parts[-1]
+            else:
+                return None  # Or handle differently if needed
+        else:
+            return None
+    return root_domain
+
 def promotion_id_to_dict(promotion_id):
     # Connect to the PostgreSQL database
     session = _db_session()
@@ -90,6 +108,15 @@ def impulse_user_id_to_promotion_ids(impulse_user_id):
         return promotion_ids
     else:
         return None
+
+def auth_user_id_to_impulse_user_dict(auth_user_id):
+    # Connect to the PostgreSQL database
+    session = _db_session()
+    impulse_user_obj = session.query(ImpulseUser).filter(ImpulseUser.auth_id == auth_user_id).first()
+    impulse_user_dict = impulse_user_obj.__dict__
+    impulse_user_dict.pop('_sa_instance_state', None)
+    session.close()
+    return impulse_user_dict
 
 def auth_user_id_to_promotion_dict_list(auth_user_id):
     # Connect to the PostgreSQL database

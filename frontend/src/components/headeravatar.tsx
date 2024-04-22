@@ -1,6 +1,5 @@
 'use client';
 
-import * as React from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
     DropdownMenu,
@@ -15,25 +14,12 @@ import { signOut } from "next-auth/react"
 import Image from 'next/image'
   
 
-export default function HeaderAvatar({ session_user_id }: { session_user_id: any }) {
-    const [isLoading, setIsLoading] = React.useState(true);
-    const [userDict, setUserDict] = React.useState<any>(null);
-
-    React.useEffect(() => {
-        setIsLoading(true);
-        fetch(`http://localhost:5000/user/${session_user_id}`)
-            .then(response => response.json())
-            .then(data => {
-                setUserDict(data);
-                setIsLoading(false);
-            });
-    }, [session_user_id]);
-
+export default function HeaderAvatar({ session_user_id, userDict, isUserDataLoading }: { session_user_id: any, userDict: any, isUserDataLoading: any }) {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger>
                 <Avatar>
-                { !isLoading ? 
+                { !isUserDataLoading ? 
                     (userDict.image == null ? 
                         <AvatarFallback>O</AvatarFallback> :
                         <AvatarImage asChild src={userDict.image}>
@@ -48,7 +34,7 @@ export default function HeaderAvatar({ session_user_id }: { session_user_id: any
                 <DropdownMenuLabel>
                     My Account
                     {
-                        !isLoading && 
+                        !isUserDataLoading && 
                         <p className="text-xs font-normal">
                             {userDict.email}
                         </p>
