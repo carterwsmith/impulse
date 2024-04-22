@@ -16,7 +16,7 @@ def promotions_tostring(session_id, test=False):
         user_impulse_id = session_obj.impulse_user_id
 
          # Query the database for the promotions
-        user_promotions = session.query(Promotions).filter(Promotions.impulse_user_id == user_impulse_id).all()
+        user_promotions = session.query(Promotions).filter(Promotions.impulse_user_id == user_impulse_id, Promotions.is_active == True).all()
 
         session.close()
     else:
