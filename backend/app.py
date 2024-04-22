@@ -183,13 +183,14 @@ def update_promotion(promotion_id):
         "discount_dollars",
         "discount_code",
     ]
-    # If the promotion is ai generated, null all the non-ai keys, otherwise null the ai keys
-    if request_json["is_ai_generated"]:
-        for key in non_ai_keys:
-            request_json[key] = None
-    else:
-        for key in ai_keys:
-            request_json[key] = None
+    # If the promotion is ai generated, null all the non-ai keys, otherwise null the ai key
+    if "is_ai_generated" in request_json:
+        if request_json["is_ai_generated"]:
+            for key in non_ai_keys:
+                request_json[key] = None
+        else:
+            for key in ai_keys:
+                request_json[key] = None
 
     session = _db_session()
     promotion = session.query(Promotions).filter(Promotions.id == promotion_id).first()
