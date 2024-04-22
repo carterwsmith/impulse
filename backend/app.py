@@ -111,7 +111,7 @@ def handle_mouse_update(data):
         # also check if there is a llmresponse that is not emitted
         llm_response = session.query(LLMResponses.response_html).filter(LLMResponses.is_emitted == False, LLMResponses.session_id == data['session_id']).order_by(LLMResponses.recorded_at.desc()).first()
         if llm_response:
-            emit('llmResponse', llm_response[0])
+            emit('llmResponse', llm_response[0], room=request.sid)  # Emit only to the room of the socket id
             # Set the is_emitted of the most recent llmresponse for that session_id to TRUE
             session.query(LLMResponses).filter(LLMResponses.session_id == data['session_id']).update({LLMResponses.is_emitted: True})
             session.commit()
@@ -148,7 +148,7 @@ def handle_page_visit(data):
     session.commit()
     session.close()
 
-    emit('loadImagesComplete', get_user_image_urls(data['session_id']))
+    emit('loadImagesComplete', get_user_image_urls(data['session_id']), room=request.sid)  # Emit only to the room of the socket id
 
 @socketio.on('pageVisitEnd')
 def handle_page_visit_end(data):
