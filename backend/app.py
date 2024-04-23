@@ -32,6 +32,9 @@ def get_active_sessions(timeout_minutes=ACTIVE_SESSION_TIMEOUT_MINUTES):
             session.query(MouseMovements.session_id).group_by(MouseMovements.session_id).having(
                 func.min(MouseMovements.recorded_at) < socketio_interval_ago
             )
+        ),
+        MouseMovements.session_id.in_(
+            session.query(ImpulseSessions.id).join(Promotions, ImpulseSessions.impulse_user_id == Promotions.impulse_user_id).filter(Promotions.is_active == True)
         )
     ).distinct().all()
 
