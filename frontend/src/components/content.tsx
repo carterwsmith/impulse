@@ -57,7 +57,7 @@ function Content({ session_user_id }: ContentProps) {
                                         <TabsTrigger value="sessions">Sessions</TabsTrigger>
                                     </TabsList>
                                     <TabsContent value="promotions" className="w-full mx-auto"><Promotions session_user_id={session_user_id}/></TabsContent>
-                                    <TabsContent value="sessions" className="w-full mx-auto bg-red-500"><Sessions/></TabsContent>
+                                    <TabsContent value="sessions" className="w-full mx-auto"><Sessions/></TabsContent>
                                 </Tabs>
                             </div>
                         )
