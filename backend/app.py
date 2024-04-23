@@ -13,7 +13,7 @@ from constants import ACTIVE_SESSION_TIMEOUT_MINUTES, SOCKETIO_BACKGROUND_TASK_D
 from commands.db_get_user_image_urls import get_user_image_urls
 from utils import pagevisit_to_root_domain, prompt_claude_session_context, promotion_id_to_dict, promotion_html_template, auth_user_id_to_promotion_dict_list, impulse_user_id_to_sessions_dict_list, auth_user_id_to_impulse_user_dict, url_to_root_domain, does_root_domain_exist
 from postgres.db_utils import _db_session, get_user_row
-from postgres.schema import ImpulseUser, ImpulseSessions, PageVisits, MouseMovements, LLMResponses, Promotions
+from postgres.schema import ImpulseUser, ImpulseSessions, PageVisits, MouseMovements, LLMResponses, Promotions, AuthUser
 
 app = Flask(__name__)
 CORS(app)
@@ -35,6 +35,14 @@ def get_active_sessions(timeout_minutes=ACTIVE_SESSION_TIMEOUT_MINUTES):
         ),
         MouseMovements.session_id.in_(
             session.query(ImpulseSessions.id).join(Promotions, ImpulseSessions.impulse_user_id == Promotions.impulse_user_id).filter(Promotions.is_active == True)
+        ),
+        MouseMovements.session_id.in_(
+            session.query(ImpulseSessions.id).join(ImpulseUser, ImpulseSessions.impulse_user_id == ImpulseUser.id).filter(
+                session.query(func.count(LLMResponses.id).label('count')).filter(
+                    LLMResponses.session_id == ImpulseSessions.id,
+                    LLMResponses.is_emitted == True
+                ).scalar_subquery() < ImpulseUser.max_popups_per_session
+            )
         )
     ).distinct().all()
 
@@ -287,6 +295,37 @@ def get_user_info(user_id):
             return jsonify({'error': 'User not found'}), 404
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/user/update/<int:user_id>', methods=['POST'])
+def update(user_id):
+    request_json = request.get_json()
+
+    # data validation
+    try:
+        max_popups_per_session = int(request_json["max_popups_per_session"])
+    except ValueError:
+        return jsonify({'status': False, 'invalid_element': 'max_popups_per_session', 'message': 'Must be a number'}), 400
+    if int(request_json["max_popups_per_session"]) <= 0:
+        return jsonify({'status': False, 'invalid_element': 'max_popups_per_session', 'message': 'Must be greater than 0'}), 400
+
+    session = _db_session()
+    user = session.query(ImpulseUser).filter(ImpulseUser.id == user_id).first()
+
+    if user:
+        data = request_json
+        for key, value in data.items():
+            try:
+                setattr(user, key, value)
+            except Exception as e:
+                session.rollback()
+                return jsonify({'error': str(e)}), 500
+        try:
+            session.commit()
+        except Exception as e:
+            session.rollback()
+            return jsonify({'error': str(e)}), 500
+    session.close()
+    return jsonify({'success': True, 'user_id': user_id, 'values': data}), 200
 
 @app.route('/user/onboard/<int:auth_id>', methods=['POST'])
 def onboard(auth_id):

@@ -41,7 +41,7 @@ export default function HeaderAvatar({ session_user_id, userDict, isUserDataLoad
                     }
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem style={{ cursor: 'pointer' }}>Settings</DropdownMenuItem>
+                <DropdownMenuItem style={{ cursor: 'pointer' }}>Account settings</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => signOut()} style={{ cursor: 'pointer' }}>Sign out</DropdownMenuItem>
             </DropdownMenuContent>
         </DropdownMenu>

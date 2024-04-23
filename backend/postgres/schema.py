@@ -9,12 +9,20 @@ Session = sessionmaker(bind=engine)
 session = Session()
 Base = declarative_base()
 
+def create_tables():
+    Base.metadata.create_all(engine)
+
 class ImpulseUser(Base):
     __tablename__ = 'ImpulseUser'
     id = Column(Integer, primary_key=True)
     auth_id = Column(Integer, ForeignKey('users.id'))
     root_domain = Column(String(255), nullable=True)
     is_domain_configured = Column(Boolean, default=False)
+    max_popups_per_session = Column(Integer, default=1)
+
+class AuthUser(Base):
+    __tablename__ = 'users'
+    id = Column(Integer, primary_key=True)
 
 class ImpulseSessions(Base):
     __tablename__ = 'ImpulseSessions'
@@ -66,5 +74,3 @@ class Promotions(Base):
     discount_percent = Column(Float, nullable=True)
     discount_dollars = Column(Float, nullable=True)
     discount_code = Column(String(50), nullable=True)
-
-Base.metadata.create_all(engine)
