@@ -209,7 +209,8 @@ export function PromotionsTable({ session_user_id }: PromotionsTableProps) {
         if (res == null) {
           res = row.original.ai_description;
         }
-        let sliced : String = res.length > 30 ? res.slice(0, 30) + '...' : res
+        // If res is still null or undefined, use a default value
+        let sliced : String = res ? (res.length > 30 ? res.slice(0, 30) + '...' : res) : '';
         return (<div>
           {sliced || <i className="text-gray-400">No description provided</i>}
         </div>);

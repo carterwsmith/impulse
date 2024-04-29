@@ -274,6 +274,21 @@ def add_promotion():
         for key in ai_keys:
             request_json[key] = None
 
+    # If non-required fields are 0 or '', set to None
+    potentially_nullable_fields = [
+        'image_url',
+        'discount_percent',
+        'discount_dollars',
+        'ai_discount_percent_min',
+        'ai_discount_percent_max',
+        'ai_discount_dollars_min',
+        'ai_discount_dollars_max',
+    ]
+
+    for field in potentially_nullable_fields:
+        if request_json[field] == 0 or request_json[field] == '':
+            request_json[field] = None
+
     session = _db_session()
     promotion = Promotions(**request_json)
     session.add(promotion)
