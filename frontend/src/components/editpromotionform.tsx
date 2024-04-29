@@ -35,6 +35,7 @@ import { Switch  } from "@/components/ui/switch"
   import {
     DollarSign,
     Percent,
+    Loader2,
   } from "lucide-react"
   import { toast } from "sonner"
    
@@ -219,6 +220,8 @@ export default function EditPromotionForm({ edited_promotion, session_user_id, d
   const [formPage, setFormPage] = React.useState(0);
   const [dollarOrPercentSwitchValue, setDollarOrPercentSwitchValue] = React.useState(false);
 
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+
   // 1. Define your form.
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -248,6 +251,7 @@ export default function EditPromotionForm({ edited_promotion, session_user_id, d
   function onSubmit(values: z.infer<typeof formSchema>) {
     // Do something with the form values.
     // ✅ This will be type-safe and validated.
+    setIsSubmitting(true);
     fetch(`http://localhost:5000/promotions/update/${edited_promotion.id}`, {
       method: 'POST',
       headers: {
@@ -265,7 +269,8 @@ export default function EditPromotionForm({ edited_promotion, session_user_id, d
     })
     .catch((error) => {
       //console.error('Error:', error);
-    });
+    })
+    .finally(() => setIsSubmitting(false));
   }
 
   return (
@@ -535,7 +540,9 @@ export default function EditPromotionForm({ edited_promotion, session_user_id, d
             <div style={{ display: 'flex', justifyContent: 'flex-end', cursor: 'pointer' }}>
                 <FormPagination formPage={formPage} setFormPage={setFormPage} />
             </div>
-            {formPage === 1 && <Button type="submit">Submit</Button>}
+            {formPage === 1 && <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Submit"}
+            </Button>}
         </div>
       </form>
     </Form>

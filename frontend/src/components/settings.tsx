@@ -1,6 +1,7 @@
 "use client"
+import * as React from "react";
 
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner"
 
 function Settings({ userDict, setIsSettingsOpen }: { userDict: any, setIsSettingsOpen: any }) {
+    const [isSubmitting, setIsSubmitting] = React.useState(false);
+
     return (
         <div className="w-full flex flex-col justify-center items-center">
             <div className="w-[80%] flex flex-row items-center cursor-pointer hover:text-gray-600 transition duration-250 ease-in-out mt-4 mb-8" >
@@ -17,6 +20,7 @@ function Settings({ userDict, setIsSettingsOpen }: { userDict: any, setIsSetting
             </div>
             <form className="w-[40%]" onSubmit={(e) => {
                 e.preventDefault();
+                setIsSubmitting(true);
                 fetch(`http://localhost:5000/user/update/${userDict.id}`, {
                     method: 'POST',
                     headers: {
@@ -38,9 +42,9 @@ function Settings({ userDict, setIsSettingsOpen }: { userDict: any, setIsSetting
                         if (data.invalid_element === "max_popups_per_session" && maxPopupsErrorElement) {
                             maxPopupsErrorElement.textContent = data.message;
                         }
-                        toast("Error updating settings.");
                     }
-                });
+                })
+                .finally(() => setIsSubmitting(false));
             }}>
                 <div className="mb-10">
                     <p className="text-4xl font-bold mb-2">Settings</p>
@@ -62,8 +66,8 @@ function Settings({ userDict, setIsSettingsOpen }: { userDict: any, setIsSetting
                         <ChevronLeft className="mr-2 h-4 w-4" /> Back
                     </Button>
 
-                    <Button className="ml-4" type="submit">
-                        Save changes
+                    <Button className="ml-4" type="submit" disabled={isSubmitting}>
+                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Save changes"}
                     </Button>
                 </div>
             </form>

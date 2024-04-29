@@ -9,6 +9,9 @@ import {
   Pencil2Icon,
   TrashIcon,
 } from "@radix-ui/react-icons"
+import { 
+  Loader2
+} from "lucide-react"
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -89,6 +92,8 @@ export function PromotionsTable({ session_user_id }: PromotionsTableProps) {
   const [isLoading, setIsLoading] = React.useState(true); // Add loading state
   const [editPromotionIdOpen, setEditPromotionIdOpen] = React.useState<number | null>(null);
   const [addPromotionDialogOpen, setAddPromotionDialogOpen] = React.useState(false);
+
+  const [isDeleteSubmitting, setIsDeleteSubmitting] = React.useState(false);
 
    async function fetchData() {
     setIsLoading(true); // Set loading to true when fetch starts
@@ -240,6 +245,7 @@ export function PromotionsTable({ session_user_id }: PromotionsTableProps) {
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <form onSubmit={(e) => {
                   e.preventDefault();
+                  setIsDeleteSubmitting(true);
                   fetch(`http://localhost:5000/promotions/delete/${promotion.id}`, {
                     method: 'DELETE'
                   })
@@ -249,8 +255,11 @@ export function PromotionsTable({ session_user_id }: PromotionsTableProps) {
                     // emit toast
                     toast(`'${row.getValue("promotion_name")}' promotion successfully deleted.`)
                   })
+                  .finally(() => setIsDeleteSubmitting(false));
                 }}>
-                  <AlertDialogAction type="submit" className="bg-red-600 hover:bg-red-800">Continue</AlertDialogAction>
+                  <AlertDialogAction type="submit" className="bg-red-600 hover:bg-red-800" disabled={isDeleteSubmitting}>
+                    {isDeleteSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Continue"}
+                  </AlertDialogAction>
                 </form>
               </AlertDialogFooter>
             </AlertDialogContent>
