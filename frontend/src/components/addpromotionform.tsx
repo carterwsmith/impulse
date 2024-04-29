@@ -247,6 +247,32 @@ export default function AddPromotionForm({ session_user_id, dialogSetter, tableD
   const { watch, handleSubmit} = form
   const ai_generated_switch_value = watch('is_ai_generated')
  
+  // ERROR HANDLING
+  // Field to page mapping
+  const fieldToPageMap = {
+    promotion_name: 0,
+    display_title: 0,
+    display_description: 0,
+    image_url: 0,
+    ai_description: 0,
+    discount_dollars: 1,
+    discount_percent: 1,
+    discount_code: 1,
+    ai_discount_dollars_min: 1,
+    ai_discount_dollars_max: 1,
+    ai_discount_percent_min: 1,
+    ai_discount_percent_max: 1
+  };
+
+  // Navigate to the first page with an error
+  const navigateToFirstErrorPage = (formErrors: any) => {
+    const firstErrorField = Object.keys(formErrors)[0] as keyof typeof fieldToPageMap;
+    const errorPage = fieldToPageMap[firstErrorField];
+    if (errorPage !== undefined) {
+      setFormPage(errorPage);
+    }
+  };
+ 
   // 2. Define a submit handler.
   function onSubmit(values: z.infer<typeof formSchema>) {
     // Do something with the form values.
@@ -272,10 +298,14 @@ export default function AddPromotionForm({ session_user_id, dialogSetter, tableD
     })
     .finally(() => setIsSubmitting(false));
   }
+  
+  function onError(formErrors: any) {
+    navigateToFirstErrorPage(formErrors);
+  }
 
   return (
     <Form {...form}>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={handleSubmit(onSubmit, onError)} className="space-y-6">
         <DialogTitle>
             Add new promotion
         </DialogTitle>
