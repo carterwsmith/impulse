@@ -58,7 +58,14 @@ import {
   Skeleton
 } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { Label } from "@/components/ui/label"
+import { Separator } from "@/components/ui/separator"
 import { toast } from "sonner"
 import AddPromotionForm from "@/components/addpromotionform"
 import EditPromotionForm from "@/components/editpromotionform"
@@ -81,6 +88,8 @@ export type Promotion = {
   display_title: string | null;
   image_url: string | null;
   impulse_user_id: number;
+
+  times_shown: number;
 };
 
 interface PromotionsTableProps {
@@ -172,7 +181,23 @@ export function PromotionsTable({ session_user_id }: PromotionsTableProps) {
           </Button>
         )
       },
-      cell: ({ row }) => <div className="lowercase">{row.getValue("promotion_name")}</div>,
+      cell: ({ row }) => {
+        return (
+          <Tooltip>
+            <TooltipTrigger className="cursor-default">
+              <div className="hover:underline underline-offset-4">
+                {row.getValue("promotion_name")}
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="right" sideOffset={10}>
+              <div className="flex flex-col m-2">
+                <strong>Stats</strong>
+                <div>Times shown: {row.original.times_shown}</div>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        )
+      },
     },
     {
       accessorKey: "display_description",
@@ -192,11 +217,20 @@ export function PromotionsTable({ session_user_id }: PromotionsTableProps) {
     },
     {
       accessorKey: "is_ai_generated",
-      header: () => <div className="">AI / Manual</div>,
+      header: () => <div className="">Source</div>,
       cell: ({ row }) => {
-        return (<div>
-          {row.getValue("is_ai_generated") ? <MagicWandIcon width="20" height="20" /> : <PersonIcon width="20" height="20" />}
-        </div>);
+        return (
+          <Tooltip>
+            <TooltipTrigger className="cursor-default">
+              <div>
+                {row.getValue("is_ai_generated") ? <MagicWandIcon width="20" height="20" /> : <PersonIcon width="20" height="20" />}
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              {row.getValue("is_ai_generated") ? "AI" : "Manual"}
+            </TooltipContent>
+          </Tooltip>
+        );
       },
     },
     {
@@ -297,6 +331,7 @@ export function PromotionsTable({ session_user_id }: PromotionsTableProps) {
   })
 
   return (
+    <TooltipProvider delayDuration={100}>
     <div className="w-full">
       <div className="flex items-center py-4">
         <Input
@@ -433,6 +468,7 @@ export function PromotionsTable({ session_user_id }: PromotionsTableProps) {
         </div>
       </div>
     </div>
+    </TooltipProvider>
   )
 }
 

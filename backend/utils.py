@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from commands.db_promotions_tostring import promotions_tostring
 from commands.db_session_tostring import session_tostring
 from postgres.db_utils import _db_session
-from postgres.schema import Promotions, ImpulseSessions, ImpulseUser
+from postgres.schema import Promotions, ImpulseSessions, ImpulseUser, LLMResponses
 
 load_dotenv()
 
@@ -100,6 +100,13 @@ def promotion_id_to_dict(promotion_id):
     # Convert the promotion object to a dictionary
     promotion_dict = promotion.__dict__
     promotion_dict.pop('_sa_instance_state', None)
+
+
+    ### SUMMARY STATS FOR DISPLAY IN TOOLTIP
+
+    # number of LLMResponses where the promotion ID (cast as a string) is equal to the text of the 'response' column and is_emitted is True
+    times_shown = session.query(LLMResponses).filter(LLMResponses.response == str(promotion_dict['id']), LLMResponses.is_emitted == True).count()
+    promotion_dict['times_shown'] = times_shown
 
     return promotion_dict
 
