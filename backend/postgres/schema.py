@@ -9,21 +9,30 @@ Session = sessionmaker(bind=engine)
 session = Session()
 Base = declarative_base()
 
+def create_tables():
+    Base.metadata.create_all(engine)
+
 class ImpulseUser(Base):
     __tablename__ = 'ImpulseUser'
     id = Column(Integer, primary_key=True)
+    auth_id = Column(Integer, ForeignKey('users.id'))
     root_domain = Column(String(255), nullable=True)
     is_domain_configured = Column(Boolean, default=False)
+    max_popups_per_session = Column(Integer, default=1)
 
-class Sessions(Base):
-    __tablename__ = 'Sessions'
+class AuthUser(Base):
+    __tablename__ = 'users'
+    id = Column(Integer, primary_key=True)
+
+class ImpulseSessions(Base):
+    __tablename__ = 'ImpulseSessions'
     id = Column(Text, primary_key=True)
     impulse_user_id = Column(Integer, ForeignKey('ImpulseUser.id'))
 
 class PageVisits(Base):
     __tablename__ = 'PageVisits'
     pagevisit_token = Column(Text, unique=True, primary_key=True)
-    session_id = Column(Text, ForeignKey('Sessions.id'))
+    session_id = Column(Text, ForeignKey('ImpulseSessions.id'))
     page_path = Column(Text)
     start_time = Column(BigInteger)
     end_time = Column(BigInteger, nullable=True)
@@ -31,7 +40,7 @@ class PageVisits(Base):
 class MouseMovements(Base):
     __tablename__ = 'MouseMovements'
     id = Column(Integer, primary_key=True, autoincrement=True)
-    session_id = Column(Text, ForeignKey('Sessions.id'))
+    session_id = Column(Text, ForeignKey('ImpulseSessions.id'))
     pagevisit_token_id = Column(Text, ForeignKey('PageVisits.pagevisit_token'))
     position_x = Column(Integer)
     position_y = Column(Integer)
@@ -41,7 +50,7 @@ class MouseMovements(Base):
 class LLMResponses(Base):
     __tablename__ = 'LLMResponses'
     id = Column(Integer, primary_key=True, autoincrement=True)
-    session_id = Column(Text, ForeignKey('Sessions.id'))
+    session_id = Column(Text, ForeignKey('ImpulseSessions.id'))
     response = Column(Text)
     recorded_at = Column(BigInteger)
     is_emitted = Column(Boolean, default=False)
@@ -51,6 +60,7 @@ class Promotions(Base):
     __tablename__ = 'Promotions'
     id = Column(Integer, primary_key=True, autoincrement=True)
     impulse_user_id = Column(Integer, ForeignKey('ImpulseUser.id'))
+    is_active = Column(Boolean, default=True)
     is_ai_generated = Column(Boolean, default=False)
     ai_description = Column(Text, nullable=True)
     ai_discount_percent_min = Column(Float, nullable=True)
@@ -64,5 +74,3 @@ class Promotions(Base):
     discount_percent = Column(Float, nullable=True)
     discount_dollars = Column(Float, nullable=True)
     discount_code = Column(String(50), nullable=True)
-
-Base.metadata.create_all(engine)

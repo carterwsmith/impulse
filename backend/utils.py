@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from commands.db_promotions_tostring import promotions_tostring
 from commands.db_session_tostring import session_tostring
 from postgres.db_utils import _db_session
+from postgres.schema import Promotions, ImpulseSessions, ImpulseUser, LLMResponses
 
 load_dotenv()
 
@@ -61,6 +62,34 @@ def pagevisit_to_root_domain(data):
         return None
     return root_domain
 
+def url_to_root_domain(page_url):
+    # Extract the root domain using a regular expression
+    match = re.search(r'(?<=://)(?:www\.)?([^/?:]+)', page_url)
+    if match:
+        root_domain = match.group(1).split('.')[-2] + '.' + match.group(1).split('.')[-1]
+    else:
+        # If the URL doesn't start with 'http://' or 'https://', we assume it's already a root domain
+        match = re.search(r'(?:www\.)?([^/?:]+)', page_url)
+        if match:
+            parts = match.group(1).split('.')
+            if len(parts) >= 2: # set upper bound on this to throw err on co.uk and multi part domain endings
+                root_domain = parts[-2] + '.' + parts[-1]
+            else:
+                return None  # Or handle differently if needed
+        else:
+            return None
+    return root_domain
+
+def does_root_domain_exist(root_domain):
+    session = _db_session()
+    
+    user = session.query(ImpulseUser).filter(ImpulseUser.root_domain == root_domain).first()
+    session.close()
+    if user:
+        return True
+    else:
+        return False
+
 def promotion_id_to_dict(promotion_id):
     # Connect to the PostgreSQL database
     session = _db_session()
@@ -73,7 +102,75 @@ def promotion_id_to_dict(promotion_id):
     promotion_dict = promotion.__dict__
     promotion_dict.pop('_sa_instance_state', None)
 
+
+    ### SUMMARY STATS FOR DISPLAY IN TOOLTIP
+
+    # number of LLMResponses where the promotion ID (cast as a string) is equal to the text of the 'response' column and is_emitted is True
+    times_shown = session.query(LLMResponses).filter(LLMResponses.response == str(promotion_dict['id']), LLMResponses.is_emitted == True).count()
+    promotion_dict['times_shown'] = times_shown
+
     return promotion_dict
+
+def impulse_user_id_to_promotion_ids(impulse_user_id):
+    # Connect to the PostgreSQL database
+    session = _db_session()
+
+    promotions = session.query(Promotions).filter(Promotions.impulse_user_id == impulse_user_id)
+
+    session.close()
+
+    if promotions:
+        # Convert the promotion objects to a list of ids
+        promotion_ids = [promotion.id for promotion in promotions]
+        return promotion_ids
+    else:
+        return None
+
+def auth_user_id_to_impulse_user_dict(auth_user_id):
+    # Connect to the PostgreSQL database
+    session = _db_session()
+    impulse_user_obj = session.query(ImpulseUser).filter(ImpulseUser.auth_id == auth_user_id).first()
+    impulse_user_dict = impulse_user_obj.__dict__
+    impulse_user_dict.pop('_sa_instance_state', None)
+    session.close()
+    return impulse_user_dict
+
+def auth_user_id_to_promotion_dict_list(auth_user_id):
+    # Connect to the PostgreSQL database
+    session = _db_session()
+
+    impulse_user_obj = session.query(ImpulseUser).filter(ImpulseUser.auth_id == auth_user_id).first()
+
+    session.close()
+
+    if impulse_user_obj:
+        impulse_user_id = impulse_user_obj.id
+        user_promotion_ids = impulse_user_id_to_promotion_ids(impulse_user_id)
+        if user_promotion_ids:
+            output = []
+            for i in sorted(user_promotion_ids):
+                output.append(promotion_id_to_dict(i))
+            return output
+        else:
+            return []
+    else:
+        return []
+
+def impulse_user_id_to_sessions_dict_list(impulse_user_id):
+    # Connect to the PostgreSQL database
+    session = _db_session()
+    user_sessions = session.query(ImpulseSessions).filter(ImpulseSessions.impulse_user_id == impulse_user_id)
+    session.close()
+
+    output = []
+    if user_sessions:
+        for s in user_sessions:
+            s_dict = s.__dict__
+            s_dict.pop('_sa_instance_state', None)
+            output.append(s_dict)
+        return output
+    else:
+        return []
 
 def promotion_html_template(discount, title, description, discount_code, image_url="https://content.api.news/v3/images/bin/82b374759b87b7e45eb5dbb04157d7cc"):
     return '''<div id="impulse-promotion"

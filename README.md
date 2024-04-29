@@ -1,8 +1,14 @@
 ## Local hosting
 Probably put this in a script
 
+### Virtualenv
+`source venv/bin/activate`
+
 ### Flask backend
 `python backend/app.py`
+
+### Next.js frontend
+`npm run dev`
 
 ### PostgreSQL
 Access console: `psql -d impulse_db`

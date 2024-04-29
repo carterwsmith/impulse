@@ -1,4 +1,5 @@
 from datetime import datetime
+import requests
 import threading
 import time
 
@@ -10,9 +11,9 @@ from sqlalchemy.orm import joinedload
 
 from constants import ACTIVE_SESSION_TIMEOUT_MINUTES, SOCKETIO_BACKGROUND_TASK_DELAY_SECONDS
 from commands.db_get_user_image_urls import get_user_image_urls
-from utils import pagevisit_to_root_domain, prompt_claude_session_context, promotion_id_to_dict, promotion_html_template
-from postgres.db_utils import _db_session
-from postgres.schema import ImpulseUser, Sessions, PageVisits, MouseMovements, LLMResponses
+from utils import pagevisit_to_root_domain, prompt_claude_session_context, promotion_id_to_dict, promotion_html_template, auth_user_id_to_promotion_dict_list, impulse_user_id_to_sessions_dict_list, auth_user_id_to_impulse_user_dict, url_to_root_domain, does_root_domain_exist
+from postgres.db_utils import _db_session, get_user_row
+from postgres.schema import ImpulseUser, ImpulseSessions, PageVisits, MouseMovements, LLMResponses, Promotions, AuthUser
 
 app = Flask(__name__)
 CORS(app)
@@ -30,6 +31,17 @@ def get_active_sessions(timeout_minutes=ACTIVE_SESSION_TIMEOUT_MINUTES):
         MouseMovements.session_id.in_(
             session.query(MouseMovements.session_id).group_by(MouseMovements.session_id).having(
                 func.min(MouseMovements.recorded_at) < socketio_interval_ago
+            )
+        ),
+        MouseMovements.session_id.in_(
+            session.query(ImpulseSessions.id).join(Promotions, ImpulseSessions.impulse_user_id == Promotions.impulse_user_id).filter(Promotions.is_active == True)
+        ),
+        MouseMovements.session_id.in_(
+            session.query(ImpulseSessions.id).join(ImpulseUser, ImpulseSessions.impulse_user_id == ImpulseUser.id).filter(
+                session.query(func.count(LLMResponses.id).label('count')).filter(
+                    LLMResponses.session_id == ImpulseSessions.id,
+                    LLMResponses.is_emitted == True
+                ).scalar_subquery() < ImpulseUser.max_popups_per_session
             )
         )
     ).distinct().all()
@@ -86,6 +98,13 @@ def prompt_active_sessions_background_task():
 
 def should_log_mouse_update(session_id, new_x, new_y):
     session = _db_session()
+
+    # if no pagevisits (should just be during onboarding), do not update
+    pagevisits_count = session.query(PageVisits).filter(PageVisits.session_id == session_id).count()
+    if pagevisits_count == 0:
+        session.close()
+        return False
+
     now_ms = int(time.time() * 1000)
     one_minute_ago = now_ms - (ACTIVE_SESSION_TIMEOUT_MINUTES * 60000)
     last_position = session.query(MouseMovements.position_x, MouseMovements.position_y).filter(MouseMovements.session_id == session_id, MouseMovements.recorded_at > one_minute_ago).order_by(MouseMovements.recorded_at).first()
@@ -117,13 +136,14 @@ def handle_mouse_update(data):
             session.commit()
         session.close()
 
+onboard_domain_set = set()
 @socketio.on('pageVisit')
 def handle_page_visit(data):
     session = _db_session()
     
     ## create session if needed
     # Check if the session exists
-    session_exists = session.query(Sessions).filter(Sessions.id == data['session_id']).first()
+    session_exists = session.query(ImpulseSessions).filter(ImpulseSessions.id == data['session_id']).first()
     
     # If the session does not exist, create it
     if not session_exists:
@@ -131,22 +151,29 @@ def handle_page_visit(data):
         # probably need some error handling here too
         user_id = session.query(ImpulseUser.id).filter(ImpulseUser.root_domain.like('%' + extracted_root_domain + '%')).first()
         if user_id:
-            new_session = Sessions(id=data['session_id'], impulse_user_id=user_id[0])
+            new_session = ImpulseSessions(id=data['session_id'], impulse_user_id=user_id[0])
             session.add(new_session)
             session.commit()
         else:
-            #
+            # assume onboarding
+            if extracted_root_domain not in onboard_domain_set:
+                onboard_domain_set.add(extracted_root_domain)
+                session.close()
+                return
+
             # THIS IS JUST FOR TESTING!!!!! USES ADMIN USER ID AND SHOULD BE CHANGED!!!!
             #
             # If no user_id is found for the domain, insert with user_id 1
-            new_session = Sessions(id=data['session_id'], impulse_user_id=1)
-            session.add(new_session)
-            session.commit()
+            # new_session = ImpulseSessions(id=data['session_id'], impulse_user_id=1)
+            # session.add(new_session)
+            # session.commit()
 
     new_page_visit = PageVisits(session_id=data['session_id'], pagevisit_token=data['pageVisitToken'], page_path=data['pagePath'], start_time=data['startTime'], end_time=None)
     session.add(new_page_visit)
     session.commit()
     session.close()
+
+    emit('loadImagesComplete', get_user_image_urls(data['session_id']))
 
 @socketio.on('pageVisitEnd')
 def handle_page_visit_end(data):
@@ -157,9 +184,207 @@ def handle_page_visit_end(data):
         session.commit()
         session.close()
 
-@socketio.on('loadImages')
-def load_images(data):
-    emit('loadImagesComplete', get_user_image_urls(data['session_id']))
+@app.route('/promotions/get/user/<int:user_id>', methods=['GET'])
+def get_user_promotions(user_id):
+    promotion_dict_list = auth_user_id_to_promotion_dict_list(user_id)
+    return jsonify(promotion_dict_list)
+
+@app.route('/promotions/update/<int:promotion_id>', methods=['POST'])
+def update_promotion(promotion_id):
+    request_json = request.get_json()
+
+    ai_keys = [
+        "ai_description",
+        "ai_discount_percent_min",
+        "ai_discount_percent_max",
+        "ai_discount_dollars_min",
+        "ai_discount_dollars_max",
+    ]
+    non_ai_keys = [
+        "image_url",
+        "display_title",
+        "display_description",
+        "discount_percent",
+        "discount_dollars",
+        "discount_code",
+    ]
+    # If the promotion is ai generated, null all the non-ai keys, otherwise null the ai key
+    if "is_ai_generated" in request_json:
+        if request_json["is_ai_generated"]:
+            for key in non_ai_keys:
+                request_json[key] = None
+        else:
+            for key in ai_keys:
+                request_json[key] = None
+
+    session = _db_session()
+    promotion = session.query(Promotions).filter(Promotions.id == promotion_id).first()
+    if promotion:
+        data = request_json
+        for key, value in data.items():
+            try:
+                setattr(promotion, key, value)
+            except Exception as e:
+                session.rollback()
+                session.close()
+                return jsonify({'error': str(e)}), 500
+        try:
+            session.commit()
+        except Exception as e:
+            session.rollback()
+            session.close()
+            return jsonify({'error': str(e)}), 500
+    session.close()
+    return jsonify({'success': True, 'promotion_id': promotion_id, 'values': data}), 200
+
+@app.route('/promotions/delete/<int:promotion_id>', methods=['DELETE'])
+def delete_promotion(promotion_id):
+    session = _db_session()
+    promotion = session.query(Promotions).filter(Promotions.id == promotion_id).first()
+    if promotion:
+        session.delete(promotion)
+        session.commit()
+    session.close()
+    return jsonify({'success': True, 'promotion_id_deleted': promotion_id}), 200
+
+@app.route('/promotions/add', methods=['POST'])
+def add_promotion():
+    request_json = request.get_json()
+
+    ai_keys = [
+        "ai_description",
+        "ai_discount_percent_min",
+        "ai_discount_percent_max",
+        "ai_discount_dollars_min",
+        "ai_discount_dollars_max",
+    ]
+    non_ai_keys = [
+        "image_url",
+        "display_title",
+        "display_description",
+        "discount_percent",
+        "discount_dollars",
+        "discount_code",
+    ]
+    # If the promotion is ai generated, null all the non-ai keys, otherwise null the ai keys
+    if request_json["is_ai_generated"]:
+        for key in non_ai_keys:
+            request_json[key] = None
+    else:
+        for key in ai_keys:
+            request_json[key] = None
+
+    # If non-required fields are 0 or '', set to None
+    potentially_nullable_fields = [
+        'image_url',
+        'discount_percent',
+        'discount_dollars',
+        'ai_discount_percent_min',
+        'ai_discount_percent_max',
+        'ai_discount_dollars_min',
+        'ai_discount_dollars_max',
+    ]
+
+    for field in potentially_nullable_fields:
+        if request_json[field] == 0 or request_json[field] == '':
+            request_json[field] = None
+
+    session = _db_session()
+    promotion = Promotions(**request_json)
+    session.add(promotion)
+    session.commit()
+    session.close()
+    return jsonify({'success': True}), 200
+
+@app.route('/user_sessions/<int:user_id>', methods=['GET'])
+def get_user_sessions(user_id):
+    session_dict_list = impulse_user_id_to_sessions_dict_list(user_id)
+    return jsonify(session_dict_list)
+
+@app.route('/user/<int:user_id>', methods=['GET'])
+def get_user_info(user_id):
+    try:
+        user_dict = get_user_row(user_id)
+        impulse_user_dict = auth_user_id_to_impulse_user_dict(user_id)
+        # combine the dicts
+        user_dict.update(impulse_user_dict)
+        if user_dict is not None:
+            return jsonify(user_dict), 200
+        else:
+            return jsonify({'error': 'User not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/user/update/<int:user_id>', methods=['POST'])
+def update(user_id):
+    request_json = request.get_json()
+
+    # data validation
+    try:
+        max_popups_per_session = int(request_json["max_popups_per_session"])
+    except ValueError:
+        return jsonify({'status': False, 'invalid_element': 'max_popups_per_session', 'message': 'Must be a number'}), 400
+    if int(request_json["max_popups_per_session"]) <= 0:
+        return jsonify({'status': False, 'invalid_element': 'max_popups_per_session', 'message': 'Must be greater than 0'}), 400
+
+    session = _db_session()
+    user = session.query(ImpulseUser).filter(ImpulseUser.id == user_id).first()
+
+    if user:
+        data = request_json
+        for key, value in data.items():
+            try:
+                setattr(user, key, value)
+            except Exception as e:
+                session.rollback()
+                session.close()
+                return jsonify({'error': str(e)}), 500
+        try:
+            session.commit()
+        except Exception as e:
+            session.rollback()
+            session.close()
+            return jsonify({'error': str(e)}), 500
+    session.close()
+    return jsonify({'success': True, 'user_id': user_id, 'values': data}), 200
+
+@app.route('/user/onboard/<int:auth_id>', methods=['POST'])
+def onboard(auth_id):
+    try:
+        request_json = request.get_json()
+        user_domain = request_json['user_domain']
+        try:
+            # if user domain does not start with https:// or http://, add https://
+            if not user_domain.startswith('https://') and not user_domain.startswith('http://'):
+                user_domain = 'https://' + user_domain
+            user_root_domain = url_to_root_domain(user_domain)
+            # co.uk etc error handling can go here
+            if not user_root_domain:
+                return jsonify({'status': False, 'message': "Invalid domain"}), 400
+            if does_root_domain_exist(user_root_domain):
+                return jsonify({'status:': False, 'message': "Domain already registered"}), 400
+        except Exception as e:
+            return jsonify({'status': False, 'message': "Error parsing domain"}), 500
+
+        # make a request to user_domain
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'}
+        response = requests.get(user_domain, headers=headers)
+        # return false if the response is not 200
+        if response.status_code != 200:
+            return jsonify({'status': False, 'message': 'Couldn\'t reach the domain'}), 400
+
+        if user_root_domain in onboard_domain_set:
+            onboard_domain_set.remove(user_root_domain)
+            session = _db_session()
+            session.query(ImpulseUser).filter(ImpulseUser.auth_id == auth_id).update({ImpulseUser.root_domain: user_root_domain, ImpulseUser.is_domain_configured: True})
+            session.commit()
+            session.close()
+
+            return jsonify({'status': True, 'auth_id': auth_id, 'domain': user_domain, 'root_domain': user_root_domain}), 200
+    except Exception as e:
+        return jsonify({'status': False, 'message': str(e)}), 500
+
+    return jsonify({'status': False, 'message': 'Onpulse.js not detected'}), 500
 
 if __name__ == '__main__':
     socketio.start_background_task(prompt_active_sessions_background_task)

@@ -2,7 +2,7 @@ from constants import initialize_command
 initialize_command()
 
 from backend.postgres.db_utils import _db_session
-from backend.postgres.schema import Sessions, Promotions
+from backend.postgres.schema import ImpulseSessions, Promotions
 
 # From a session UUID, extract the user and all active promotions to construct a string suitable for an LLM prompt.
 def promotions_tostring(session_id, test=False):
@@ -10,13 +10,13 @@ def promotions_tostring(session_id, test=False):
     session = _db_session()
 
     # Query the database for the impulse_user_id
-    session_obj = session.query(Sessions).filter(Sessions.id == session_id).first()
+    session_obj = session.query(ImpulseSessions).filter(ImpulseSessions.id == session_id).first()
     
     if session_obj: # if session exists
         user_impulse_id = session_obj.impulse_user_id
 
          # Query the database for the promotions
-        user_promotions = session.query(Promotions).filter(Promotions.impulse_user_id == user_impulse_id).all()
+        user_promotions = session.query(Promotions).filter(Promotions.impulse_user_id == user_impulse_id, Promotions.is_active == True).all()
 
         session.close()
     else:
@@ -29,14 +29,14 @@ def promotions_tostring(session_id, test=False):
         is_ai_generated = p.is_ai_generated
         if is_ai_generated:
             promotion_string += f"Description of this promotion's target audience: {p.ai_description}\n"
-            if ai_columns[1]: # this means the range is in dollars
+            if p.ai_discount_dollars_min: # this means the range is in dollars
                 promotion_string += f"Range of possible discount in USD: from {p.ai_discount_dollars_min} to {p.ai_discount_dollars_max}\n"
             else: # range in percent
                 promotion_string += f"Range of possible discount in percent off: from {p.ai_discount_percent_min} to {p.ai_discount_percent_max}\n"
         else:
             promotion_string += f"Title of the promotion: {p.display_title}\n"
             promotion_string += f"Description of the promotion: {p.display_description}\n"
-            if nonai_columns[3]: # dollars
+            if p.discount_dollars: # dollars
                 promotion_string += f"Discount in USD: {p.discount_dollars}\n"
             else:
                 promotion_string += f"Discount in percent off: {p.discount_percent}\n"
