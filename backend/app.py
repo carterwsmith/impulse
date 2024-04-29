@@ -102,6 +102,7 @@ def should_log_mouse_update(session_id, new_x, new_y):
     # if no pagevisits (should just be during onboarding), do not update
     pagevisits_count = session.query(PageVisits).filter(PageVisits.session_id == session_id).count()
     if pagevisits_count == 0:
+        session.close()
         return False
 
     now_ms = int(time.time() * 1000)
@@ -157,6 +158,7 @@ def handle_page_visit(data):
             # assume onboarding
             if extracted_root_domain not in onboard_domain_set:
                 onboard_domain_set.add(extracted_root_domain)
+                session.close()
                 return
 
             # THIS IS JUST FOR TESTING!!!!! USES ADMIN USER ID AND SHOULD BE CHANGED!!!!
@@ -224,11 +226,13 @@ def update_promotion(promotion_id):
                 setattr(promotion, key, value)
             except Exception as e:
                 session.rollback()
+                session.close()
                 return jsonify({'error': str(e)}), 500
         try:
             session.commit()
         except Exception as e:
             session.rollback()
+            session.close()
             return jsonify({'error': str(e)}), 500
     session.close()
     return jsonify({'success': True, 'promotion_id': promotion_id, 'values': data}), 200
@@ -240,7 +244,7 @@ def delete_promotion(promotion_id):
     if promotion:
         session.delete(promotion)
         session.commit()
-        session.close()
+    session.close()
     return jsonify({'success': True, 'promotion_id_deleted': promotion_id}), 200
 
 @app.route('/promotions/add', methods=['POST'])
@@ -318,11 +322,13 @@ def update(user_id):
                 setattr(user, key, value)
             except Exception as e:
                 session.rollback()
+                session.close()
                 return jsonify({'error': str(e)}), 500
         try:
             session.commit()
         except Exception as e:
             session.rollback()
+            session.close()
             return jsonify({'error': str(e)}), 500
     session.close()
     return jsonify({'success': True, 'user_id': user_id, 'values': data}), 200

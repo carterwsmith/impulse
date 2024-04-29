@@ -84,6 +84,7 @@ def does_root_domain_exist(root_domain):
     session = _db_session()
     
     user = session.query(ImpulseUser).filter(ImpulseUser.root_domain == root_domain).first()
+    session.close()
     if user:
         return True
     else:
