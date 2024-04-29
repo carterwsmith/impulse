@@ -211,7 +211,7 @@ export function PromotionsTable({ session_user_id }: PromotionsTableProps) {
         }
         let sliced : String = res.length > 30 ? res.slice(0, 30) + '...' : res
         return (<div>
-          {sliced}
+          {sliced || <i className="text-gray-400">No description provided</i>}
         </div>);
       },
     },
