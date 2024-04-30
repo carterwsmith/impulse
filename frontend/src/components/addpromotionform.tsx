@@ -70,7 +70,7 @@ const formSchema = z.object({
   display_description: z.string().max(250).optional(),
   discount_percent: z.coerce.number().min(0).max(100).optional(),
   discount_dollars: z.coerce.number().min(0).optional(),
-  discount_code: z.string().max(20).optional(),
+  discount_code: z.string().max(20),
 }).refine(schema => {
     return !(
         schema.is_ai_generated &&
@@ -131,7 +131,7 @@ const formSchema = z.object({
             });
         }
 
-    if (schema.is_ai_generated && schema.ai_discount_dollars_max && schema.ai_discount_dollars_min &&
+    if (schema.is_ai_generated && schema.ai_discount_dollars_max !== undefined && schema.ai_discount_dollars_min !== undefined &&
         (
             schema.ai_discount_dollars_max < schema.ai_discount_dollars_min
         )) {
@@ -149,7 +149,7 @@ const formSchema = z.object({
             });
         }
 
-    if (schema.is_ai_generated && schema.ai_discount_percent_max && schema.ai_discount_percent_min &&
+    if (schema.is_ai_generated && schema.ai_discount_percent_max !== undefined && schema.ai_discount_percent_min !== undefined &&
         (
             schema.ai_discount_percent_max < schema.ai_discount_percent_min
         )) {
@@ -188,7 +188,6 @@ const formSchema = z.object({
     }
 
     if (
-        !schema.is_ai_generated &&
         (
             schema.discount_code == ""
         )
@@ -483,25 +482,6 @@ export default function AddPromotionForm({ session_user_id, dialogSetter, tableD
             )}
             />
         </>}
-
-        { formPage === 1 && !ai_generated_switch_value &&
-            <FormField
-            control={form.control}
-            name="discount_code"
-            render={({ field }) => (
-                <FormItem>
-                <FormLabel>Discount code</FormLabel>
-                <FormControl>
-                    <Input {...field} placeholder="5OFF"/>
-                </FormControl>
-                <FormDescription>
-                    Your discount code registered with your storefront.
-                </FormDescription>
-                <FormMessage />
-                </FormItem>
-            )}
-            />
-        }
     
         { ai_generated_switch_value && formPage === 1 && !dollarOrPercentSwitchValue && <>
             <FormField
@@ -586,6 +566,25 @@ export default function AddPromotionForm({ session_user_id, dialogSetter, tableD
             )}
             />
         </>}
+
+        { formPage === 1 &&
+            <FormField
+            control={form.control}
+            name="discount_code"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Discount code</FormLabel>
+                <FormControl>
+                    <Input {...field} placeholder="5OFF"/>
+                </FormControl>
+                <FormDescription>
+                    Your discount code registered with your storefront.
+                </FormDescription>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+        }
 
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', justifyContent: 'flex-end', cursor: 'pointer' }}>

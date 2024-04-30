@@ -73,4 +73,4 @@ class Promotions(Base):
     display_description = Column(Text, nullable=True)
     discount_percent = Column(Float, nullable=True)
     discount_dollars = Column(Float, nullable=True)
-    discount_code = Column(String(50), nullable=True)
+    discount_code = Column(String(50))

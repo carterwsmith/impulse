@@ -206,7 +206,6 @@ def update_promotion(promotion_id):
         "display_description",
         "discount_percent",
         "discount_dollars",
-        "discount_code",
     ]
     # If the promotion is ai generated, null all the non-ai keys, otherwise null the ai key
     if "is_ai_generated" in request_json:
@@ -264,7 +263,6 @@ def add_promotion():
         "display_description",
         "discount_percent",
         "discount_dollars",
-        "discount_code",
     ]
     # If the promotion is ai generated, null all the non-ai keys, otherwise null the ai keys
     if request_json["is_ai_generated"]:
