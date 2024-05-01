@@ -1,7 +1,10 @@
 'use client'
 
+import * as React from "react"
+
 import { useSearchParams } from 'next/navigation'
 import { signIn } from 'next-auth/react'
+import { Loader2 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -10,12 +13,15 @@ import { Input } from '@/components/ui/input'
 export default function EmailSignInForm() {
   const searchParams = useSearchParams()
   const callbackUrl = searchParams.get('callbackUrl') || '/'
+  const [isSubmitting, setIsSubmitting] = React.useState(false)
 
   async function handleSubmit(event: any) {
     event.preventDefault()
     const formData = new FormData(event.target)
     const email = formData.get('email')
-    signIn('resend', { email, callbackUrl })
+    setIsSubmitting(true)
+    await signIn('resend', { email, callbackUrl })
+    setIsSubmitting(false)
   }
 
   return (
@@ -42,8 +48,9 @@ export default function EmailSignInForm() {
                 <Button
                     type='submit'
                     className='mt-3 w-full'
+                    disabled={isSubmitting}
                 >
-                    Continue with email
+                    {isSubmitting ? <Loader2 className="animate-spin" /> : 'Continue with email'}
                 </Button>
                 </div>
             </div>
