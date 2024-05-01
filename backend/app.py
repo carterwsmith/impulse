@@ -20,33 +20,33 @@ CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 def get_active_sessions(timeout_minutes=ACTIVE_SESSION_TIMEOUT_MINUTES):
-    session = _db_session()
+    with _db_session() as session:
 
-    now_ms = int(time.time() * 1000)
-    one_minute_ago = now_ms - (ACTIVE_SESSION_TIMEOUT_MINUTES * 60000)
-    socketio_interval_ago = now_ms - (SOCKETIO_BACKGROUND_TASK_DELAY_SECONDS * 1000)
-    
-    active_sessions = session.query(MouseMovements.session_id).filter(
-        MouseMovements.recorded_at > socketio_interval_ago,
-        MouseMovements.session_id.in_(
-            session.query(MouseMovements.session_id).group_by(MouseMovements.session_id).having(
-                func.min(MouseMovements.recorded_at) < socketio_interval_ago
+        now_ms = int(time.time() * 1000)
+        one_minute_ago = now_ms - (ACTIVE_SESSION_TIMEOUT_MINUTES * 60000)
+        socketio_interval_ago = now_ms - (SOCKETIO_BACKGROUND_TASK_DELAY_SECONDS * 1000)
+        
+        active_sessions = session.query(MouseMovements.session_id).filter(
+            MouseMovements.recorded_at > socketio_interval_ago,
+            MouseMovements.session_id.in_(
+                session.query(MouseMovements.session_id).group_by(MouseMovements.session_id).having(
+                    func.min(MouseMovements.recorded_at) < socketio_interval_ago
+                )
+            ),
+            MouseMovements.session_id.in_(
+                session.query(ImpulseSessions.id).join(Promotions, ImpulseSessions.impulse_user_id == Promotions.impulse_user_id).filter(Promotions.is_active == True)
+            ),
+            MouseMovements.session_id.in_(
+                session.query(ImpulseSessions.id).join(ImpulseUser, ImpulseSessions.impulse_user_id == ImpulseUser.id).filter(
+                    session.query(func.count(LLMResponses.id).label('count')).filter(
+                        LLMResponses.session_id == ImpulseSessions.id,
+                        LLMResponses.is_emitted == True
+                    ).scalar_subquery() < ImpulseUser.max_popups_per_session
+                )
             )
-        ),
-        MouseMovements.session_id.in_(
-            session.query(ImpulseSessions.id).join(Promotions, ImpulseSessions.impulse_user_id == Promotions.impulse_user_id).filter(Promotions.is_active == True)
-        ),
-        MouseMovements.session_id.in_(
-            session.query(ImpulseSessions.id).join(ImpulseUser, ImpulseSessions.impulse_user_id == ImpulseUser.id).filter(
-                session.query(func.count(LLMResponses.id).label('count')).filter(
-                    LLMResponses.session_id == ImpulseSessions.id,
-                    LLMResponses.is_emitted == True
-                ).scalar_subquery() < ImpulseUser.max_popups_per_session
-            )
-        )
-    ).distinct().all()
+        ).distinct().all()
 
-    session.close()
+        session.close()
 
     return [session[0] for session in active_sessions]
 
@@ -98,11 +98,11 @@ def prompt_claude_and_store_response(session_id, promotion=True):
             except:
                 raise ValueError("Error while generating html")
 
-    session = _db_session()
-    llm_response = LLMResponses(session_id=session_id, response=response.id, recorded_at=timestamp, is_emitted=False, response_html=promotion_html)
-    session.add(llm_response)
-    session.commit()
-    session.close()
+    with _db_session() as session:
+        llm_response = LLMResponses(session_id=session_id, response=response.id, recorded_at=timestamp, is_emitted=False, response_html=promotion_html)
+        session.add(llm_response)
+        session.commit()
+        session.close()
     
     return response, timestamp
 
@@ -116,92 +116,92 @@ def prompt_active_sessions_background_task():
         socketio.sleep(SOCKETIO_BACKGROUND_TASK_DELAY_SECONDS)
 
 def should_log_mouse_update(session_id, new_x, new_y):
-    session = _db_session()
+    with _db_session() as session:
 
-    # if no pagevisits (should just be during onboarding), do not update
-    pagevisits_count = session.query(PageVisits).filter(PageVisits.session_id == session_id).count()
-    if pagevisits_count == 0:
+        # if no pagevisits (should just be during onboarding), do not update
+        pagevisits_count = session.query(PageVisits).filter(PageVisits.session_id == session_id).count()
+        if pagevisits_count == 0:
+            session.close()
+            return False
+
+        now_ms = int(time.time() * 1000)
+        one_minute_ago = now_ms - (ACTIVE_SESSION_TIMEOUT_MINUTES * 60000)
+        last_position = session.query(MouseMovements.position_x, MouseMovements.position_y).filter(MouseMovements.session_id == session_id, MouseMovements.recorded_at > one_minute_ago).order_by(MouseMovements.recorded_at).first()
+        has_mouse_movements = session.query(MouseMovements).filter(MouseMovements.session_id == session_id).count() > 0
         session.close()
-        return False
-
-    now_ms = int(time.time() * 1000)
-    one_minute_ago = now_ms - (ACTIVE_SESSION_TIMEOUT_MINUTES * 60000)
-    last_position = session.query(MouseMovements.position_x, MouseMovements.position_y).filter(MouseMovements.session_id == session_id, MouseMovements.recorded_at > one_minute_ago).order_by(MouseMovements.recorded_at).first()
-    has_mouse_movements = session.query(MouseMovements).filter(MouseMovements.session_id == session_id).count() > 0
-    session.close()
     return (not last_position and not has_mouse_movements) or last_position[0] != new_x or last_position[1] != new_y
 
 @socketio.on('mouseUpdate')
 def handle_mouse_update(data):
     if should_log_mouse_update(data['session_id'], data['mousePos']['x'], data['mousePos']['y']):
-        session = _db_session()
-        mouse_movement = MouseMovements(
-            session_id=data['session_id'],
-            pagevisit_token_id=data['pageVisitToken'],
-            position_x=data['mousePos']['x'],
-            position_y=data['mousePos']['y'],
-            text_or_tag_hovered=data['hovered'],
-            recorded_at=data['recordedAt']
-        )
-        session.add(mouse_movement)
-        session.commit()
-
-        # also check if there is a llmresponse that is not emitted
-        llm_response = session.query(LLMResponses.response_html).filter(LLMResponses.is_emitted == False, LLMResponses.session_id == data['session_id']).order_by(LLMResponses.recorded_at.desc()).first()
-        if llm_response:
-            emit('llmResponse', llm_response[0])
-            # Set the is_emitted of the most recent llmresponse for that session_id to TRUE
-            session.query(LLMResponses).filter(LLMResponses.session_id == data['session_id']).update({LLMResponses.is_emitted: True})
+        with _db_session() as session:
+            mouse_movement = MouseMovements(
+                session_id=data['session_id'],
+                pagevisit_token_id=data['pageVisitToken'],
+                position_x=data['mousePos']['x'],
+                position_y=data['mousePos']['y'],
+                text_or_tag_hovered=data['hovered'],
+                recorded_at=data['recordedAt']
+            )
+            session.add(mouse_movement)
             session.commit()
-        session.close()
+
+            # also check if there is a llmresponse that is not emitted
+            llm_response = session.query(LLMResponses.response_html).filter(LLMResponses.is_emitted == False, LLMResponses.session_id == data['session_id']).order_by(LLMResponses.recorded_at.desc()).first()
+            if llm_response:
+                emit('llmResponse', llm_response[0])
+                # Set the is_emitted of the most recent llmresponse for that session_id to TRUE
+                session.query(LLMResponses).filter(LLMResponses.session_id == data['session_id']).update({LLMResponses.is_emitted: True})
+                session.commit()
+            session.close()
 
 onboard_domain_set = set()
 @socketio.on('pageVisit')
 def handle_page_visit(data):
-    session = _db_session()
+    with _db_session() as session:
     
-    ## create session if needed
-    # Check if the session exists
-    session_exists = session.query(ImpulseSessions).filter(ImpulseSessions.id == data['session_id']).first()
-    
-    # If the session does not exist, create it
-    if not session_exists:
-        extracted_root_domain = pagevisit_to_root_domain(data)
-        # probably need some error handling here too
-        user_id = session.query(ImpulseUser.id).filter(ImpulseUser.root_domain.like('%' + extracted_root_domain + '%')).first()
-        if user_id:
-            new_session = ImpulseSessions(id=data['session_id'], impulse_user_id=user_id[0])
-            session.add(new_session)
-            session.commit()
-        else:
-            # assume onboarding
-            if extracted_root_domain not in onboard_domain_set:
-                onboard_domain_set.add(extracted_root_domain)
-                session.close()
-                return
+        ## create session if needed
+        # Check if the session exists
+        session_exists = session.query(ImpulseSessions).filter(ImpulseSessions.id == data['session_id']).first()
+        
+        # If the session does not exist, create it
+        if not session_exists:
+            extracted_root_domain = pagevisit_to_root_domain(data)
+            # probably need some error handling here too
+            user_id = session.query(ImpulseUser.id).filter(ImpulseUser.root_domain.like('%' + extracted_root_domain + '%')).first()
+            if user_id:
+                new_session = ImpulseSessions(id=data['session_id'], impulse_user_id=user_id[0])
+                session.add(new_session)
+                session.commit()
+            else:
+                # assume onboarding
+                if extracted_root_domain not in onboard_domain_set:
+                    onboard_domain_set.add(extracted_root_domain)
+                    session.close()
+                    return
 
-            # THIS IS JUST FOR TESTING!!!!! USES ADMIN USER ID AND SHOULD BE CHANGED!!!!
-            #
-            # If no user_id is found for the domain, insert with user_id 1
-            # new_session = ImpulseSessions(id=data['session_id'], impulse_user_id=1)
-            # session.add(new_session)
-            # session.commit()
+                # THIS IS JUST FOR TESTING!!!!! USES ADMIN USER ID AND SHOULD BE CHANGED!!!!
+                #
+                # If no user_id is found for the domain, insert with user_id 1
+                # new_session = ImpulseSessions(id=data['session_id'], impulse_user_id=1)
+                # session.add(new_session)
+                # session.commit()
 
-    new_page_visit = PageVisits(session_id=data['session_id'], pagevisit_token=data['pageVisitToken'], page_path=data['pagePath'], start_time=data['startTime'], end_time=None)
-    session.add(new_page_visit)
-    session.commit()
-    session.close()
+        new_page_visit = PageVisits(session_id=data['session_id'], pagevisit_token=data['pageVisitToken'], page_path=data['pagePath'], start_time=data['startTime'], end_time=None)
+        session.add(new_page_visit)
+        session.commit()
+        session.close()
 
-    emit('loadImagesComplete', get_user_image_urls(data['session_id']))
+        emit('loadImagesComplete', get_user_image_urls(data['session_id']))
 
 @socketio.on('pageVisitEnd')
 def handle_page_visit_end(data):
-    session = _db_session()
-    page_visit = session.query(PageVisits).filter(PageVisits.pagevisit_token == data['pageVisitToken']).first()
-    if page_visit:
-        page_visit.end_time = data['endTime']
-        session.commit()
-        session.close()
+    with _db_session() as session:
+        page_visit = session.query(PageVisits).filter(PageVisits.pagevisit_token == data['pageVisitToken']).first()
+        if page_visit:
+            page_visit.end_time = data['endTime']
+            session.commit()
+            session.close()
 
 @app.route('/promotions/get/user/<int:user_id>', methods=['GET'])
 def get_user_promotions(user_id):
@@ -235,34 +235,34 @@ def update_promotion(promotion_id):
             for key in ai_keys:
                 request_json[key] = None
 
-    session = _db_session()
-    promotion = session.query(Promotions).filter(Promotions.id == promotion_id).first()
-    if promotion:
-        data = request_json
-        for key, value in data.items():
+    with _db_session() as session:
+        promotion = session.query(Promotions).filter(Promotions.id == promotion_id).first()
+        if promotion:
+            data = request_json
+            for key, value in data.items():
+                try:
+                    setattr(promotion, key, value)
+                except Exception as e:
+                    session.rollback()
+                    session.close()
+                    return jsonify({'error': str(e)}), 500
             try:
-                setattr(promotion, key, value)
+                session.commit()
             except Exception as e:
                 session.rollback()
                 session.close()
                 return jsonify({'error': str(e)}), 500
-        try:
-            session.commit()
-        except Exception as e:
-            session.rollback()
-            session.close()
-            return jsonify({'error': str(e)}), 500
-    session.close()
+        session.close()
     return jsonify({'success': True, 'promotion_id': promotion_id, 'values': data}), 200
 
 @app.route('/promotions/delete/<int:promotion_id>', methods=['DELETE'])
 def delete_promotion(promotion_id):
-    session = _db_session()
-    promotion = session.query(Promotions).filter(Promotions.id == promotion_id).first()
-    if promotion:
-        session.delete(promotion)
-        session.commit()
-    session.close()
+    with _db_session() as session:
+        promotion = session.query(Promotions).filter(Promotions.id == promotion_id).first()
+        if promotion:
+            session.delete(promotion)
+            session.commit()
+        session.close()
     return jsonify({'success': True, 'promotion_id_deleted': promotion_id}), 200
 
 @app.route('/promotions/add', methods=['POST'])
@@ -306,11 +306,11 @@ def add_promotion():
         if request_json[field] == 0 or request_json[field] == '':
             request_json[field] = None
 
-    session = _db_session()
-    promotion = Promotions(**request_json)
-    session.add(promotion)
-    session.commit()
-    session.close()
+    with _db_session() as session:
+        promotion = Promotions(**request_json)
+        session.add(promotion)
+        session.commit()
+        session.close()
     return jsonify({'success': True}), 200
 
 @app.route('/user_sessions/<int:user_id>', methods=['GET'])
@@ -344,25 +344,25 @@ def update(user_id):
     if int(request_json["max_popups_per_session"]) <= 0:
         return jsonify({'status': False, 'invalid_element': 'max_popups_per_session', 'message': 'Must be greater than 0'}), 400
 
-    session = _db_session()
-    user = session.query(ImpulseUser).filter(ImpulseUser.id == user_id).first()
+    with _db_session() as session:
+        user = session.query(ImpulseUser).filter(ImpulseUser.id == user_id).first()
 
-    if user:
-        data = request_json
-        for key, value in data.items():
+        if user:
+            data = request_json
+            for key, value in data.items():
+                try:
+                    setattr(user, key, value)
+                except Exception as e:
+                    session.rollback()
+                    session.close()
+                    return jsonify({'error': str(e)}), 500
             try:
-                setattr(user, key, value)
+                session.commit()
             except Exception as e:
                 session.rollback()
                 session.close()
                 return jsonify({'error': str(e)}), 500
-        try:
-            session.commit()
-        except Exception as e:
-            session.rollback()
-            session.close()
-            return jsonify({'error': str(e)}), 500
-    session.close()
+        session.close()
     return jsonify({'success': True, 'user_id': user_id, 'values': data}), 200
 
 @app.route('/user/onboard/<int:auth_id>', methods=['POST'])
@@ -392,10 +392,10 @@ def onboard(auth_id):
 
         if user_root_domain in onboard_domain_set:
             onboard_domain_set.remove(user_root_domain)
-            session = _db_session()
-            session.query(ImpulseUser).filter(ImpulseUser.auth_id == auth_id).update({ImpulseUser.root_domain: user_root_domain, ImpulseUser.is_domain_configured: True})
-            session.commit()
-            session.close()
+            with _db_session() as session:
+                session.query(ImpulseUser).filter(ImpulseUser.auth_id == auth_id).update({ImpulseUser.root_domain: user_root_domain, ImpulseUser.is_domain_configured: True})
+                session.commit()
+                session.close()
 
             return jsonify({'status': True, 'auth_id': auth_id, 'domain': user_domain, 'root_domain': user_root_domain}), 200
     except Exception as e:

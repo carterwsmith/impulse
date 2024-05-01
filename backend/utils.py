@@ -136,10 +136,10 @@ def url_to_root_domain(page_url):
     return root_domain
 
 def does_root_domain_exist(root_domain):
-    session = _db_session()
+    with _db_session() as session:
     
-    user = session.query(ImpulseUser).filter(ImpulseUser.root_domain == root_domain).first()
-    session.close()
+        user = session.query(ImpulseUser).filter(ImpulseUser.root_domain == root_domain).first()
+        session.close()
     if user:
         return True
     else:
@@ -147,11 +147,11 @@ def does_root_domain_exist(root_domain):
 
 def promotion_id_to_dict(promotion_id):
     # Connect to the PostgreSQL database
-    session = _db_session()
+    with _db_session() as session:
 
-    promotion = session.query(Promotions).filter(Promotions.id == promotion_id).first()
+        promotion = session.query(Promotions).filter(Promotions.id == promotion_id).first()
 
-    session.close()
+        session.close()
 
     # Convert the promotion object to a dictionary
     promotion_dict = promotion.__dict__
@@ -168,11 +168,11 @@ def promotion_id_to_dict(promotion_id):
 
 def impulse_user_id_to_promotion_ids(impulse_user_id):
     # Connect to the PostgreSQL database
-    session = _db_session()
+    with _db_session() as session:
 
-    promotions = session.query(Promotions).filter(Promotions.impulse_user_id == impulse_user_id)
+        promotions = session.query(Promotions).filter(Promotions.impulse_user_id == impulse_user_id)
 
-    session.close()
+        session.close()
 
     if promotions:
         # Convert the promotion objects to a list of ids
@@ -183,20 +183,20 @@ def impulse_user_id_to_promotion_ids(impulse_user_id):
 
 def auth_user_id_to_impulse_user_dict(auth_user_id):
     # Connect to the PostgreSQL database
-    session = _db_session()
-    impulse_user_obj = session.query(ImpulseUser).filter(ImpulseUser.auth_id == auth_user_id).first()
-    impulse_user_dict = impulse_user_obj.__dict__
-    impulse_user_dict.pop('_sa_instance_state', None)
-    session.close()
+    with _db_session() as session:
+        impulse_user_obj = session.query(ImpulseUser).filter(ImpulseUser.auth_id == auth_user_id).first()
+        impulse_user_dict = impulse_user_obj.__dict__
+        impulse_user_dict.pop('_sa_instance_state', None)
+        session.close()
     return impulse_user_dict
 
 def auth_user_id_to_promotion_dict_list(auth_user_id):
     # Connect to the PostgreSQL database
-    session = _db_session()
+    with _db_session() as session:
 
-    impulse_user_obj = session.query(ImpulseUser).filter(ImpulseUser.auth_id == auth_user_id).first()
+        impulse_user_obj = session.query(ImpulseUser).filter(ImpulseUser.auth_id == auth_user_id).first()
 
-    session.close()
+        session.close()
 
     if impulse_user_obj:
         impulse_user_id = impulse_user_obj.id
@@ -213,9 +213,9 @@ def auth_user_id_to_promotion_dict_list(auth_user_id):
 
 def impulse_user_id_to_sessions_dict_list(impulse_user_id):
     # Connect to the PostgreSQL database
-    session = _db_session()
-    user_sessions = session.query(ImpulseSessions).filter(ImpulseSessions.impulse_user_id == impulse_user_id)
-    session.close()
+    with _db_session() as session:
+        user_sessions = session.query(ImpulseSessions).filter(ImpulseSessions.impulse_user_id == impulse_user_id)
+        session.close()
 
     output = []
     if user_sessions:

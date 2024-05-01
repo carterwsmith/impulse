@@ -7,20 +7,20 @@ from backend.postgres.schema import Promotions
 # From a promotion id, extract its information into a string suitable for an LLM prompt.
 def ai_promotion_tostring(promotion_id, test=False):
     # Connect to the PostgreSQL database
-    session = _db_session()
+    with _db_session() as session:
 
-    # Query the database for the promotion
-    p = session.query(Promotions).filter(Promotions.id == promotion_id).first()
-    
-    if p: # if promotion exists
-        user_impulse_id = p.impulse_user_id
-        session.close()
-    elif not p.is_ai_generated:
-        session.close()
-        return ""
-    else:
-        session.close()
-        return ""
+        # Query the database for the promotion
+        p = session.query(Promotions).filter(Promotions.id == promotion_id).first()
+        
+        if p: # if promotion exists
+            user_impulse_id = p.impulse_user_id
+            session.close()
+        elif not p.is_ai_generated:
+            session.close()
+            return ""
+        else:
+            session.close()
+            return ""
 
     promotion_string = ""
     promotion_string += f"<promotion id={p.id}>\n"

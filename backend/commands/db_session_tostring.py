@@ -7,16 +7,16 @@ from backend.postgres.schema import PageVisits, MouseMovements
 # From a session UUID, extract all of the associated page visits and mouse positions to construct a string suitable for an LLM prompt.
 def session_tostring(session_id):
     # Connect to the PostgreSQL database
-    session = _db_session()
+    with _db_session() as session:
 
-    # Get all page visits for the session
-    page_visits = session.query(PageVisits).filter(PageVisits.session_id == session_id).all()
+        # Get all page visits for the session
+        page_visits = session.query(PageVisits).filter(PageVisits.session_id == session_id).all()
 
-    # Get all mouse positions for the session
-    mouse_positions = session.query(MouseMovements).filter(MouseMovements.session_id == session_id).all()
+        # Get all mouse positions for the session
+        mouse_positions = session.query(MouseMovements).filter(MouseMovements.session_id == session_id).all()
 
-    # Close the connection
-    session.close()
+        # Close the connection
+        session.close()
 
     # Construct the string
     result = ''
