@@ -4,7 +4,10 @@ import requests
 
 import anthropic
 from dotenv import load_dotenv
+import instructor
+from pydantic import BaseModel
 
+from commands.db_ai_promotion_tostring import ai_promotion_tostring
 from commands.db_promotions_tostring import promotions_tostring
 from commands.db_session_tostring import session_tostring
 from postgres.db_utils import _db_session
@@ -14,7 +17,7 @@ load_dotenv()
 
 @cache
 def _anthropic_client():
-    client = anthropic.Anthropic()
+    client = instructor.from_anthropic(anthropic.Anthropic())
     return client
 
 def session_to_prompt(session_id, directive=None, test=False):
@@ -32,8 +35,11 @@ def session_to_prompt(session_id, directive=None, test=False):
     else:
         return prompt_str
 
+class PromotionID(BaseModel):
+    id: int | None
+
 SUMMARY_DIRECTIVE = "In under 140 characters, summarize what the user is trying to do on this website. Use as much of the data as possible to make your decision. Bias towards the LATEST POSSIBLE data because it is the most recent."
-PROMOTION_DIRECTIVE = "Use all of the available browsing data, with a bias towards the LATEST POSSIBLE because it is the most recent. If there is a promotion that fits the user's browsing activity, output that promotion's ID EXACTLY and nothing else. If there is a range provided, select a discount within the range that you predict will be most effective for this specific user. Be very selective and only choose one if the user shows some intent that makes the promotion relevant for them. If not, output 'no promotion' and nothing else."
+PROMOTION_DIRECTIVE = "Use all of the available browsing data, with a bias towards the LATEST POSSIBLE because it is the most recent. If there is a promotion that fits the user's browsing activity, output that promotion's ID EXACTLY and nothing else. If there is a range provided, select a discount within the range that you predict will be most effective for this specific user. Be very selective and only choose one if the user shows some intent that makes the promotion relevant for them. If not, output None and nothing else."
 DEFAULT_SYSTEM_PROMPT = "You are an expert in psychology and consumer behavior."
 def prompt_claude_session_context(session_id, directive=PROMOTION_DIRECTIVE):
     client = _anthropic_client()
@@ -46,11 +52,60 @@ def prompt_claude_session_context(session_id, directive=PROMOTION_DIRECTIVE):
         system=DEFAULT_SYSTEM_PROMPT,
         messages=[
             {"role": "user", "content": prompt_contents}
-        ]
+        ],
+        response_model=PromotionID
     )
 
-    response = message.content[0].text
-    return response
+
+    assert isinstance(message, PromotionID)
+    #response = message.content[0].text
+    #return response
+    return message
+
+def promotion_to_prompt(session_id, promotion_id, directive=None, test=False):
+    session_str = session_tostring(session_id).strip()
+    promotion_str = ai_promotion_tostring(promotion_id).strip()
+
+    prompt_str = f'''You will be given the browsing and mouse position data (recorded each second) from the user of a website.\nIn the <t> tag will be the text of the element they are hovering over at that time, or the tag of the element itself if there is no text.\n\n<browsing_data>\n{session_str}\n</browsing_data>\n\n'''
+    prompt_str += f'''You will now be given a concept of an e-commerce promotion from the creator of the website.\n\n{promotion_str}'''
+    if directive:
+        prompt_str += f"\n\n{directive}"
+
+    if test:
+        print(prompt_str)
+        return
+    else:
+        return prompt_str
+
+class GeneratedPromotion(BaseModel):
+    discount: float
+    title: str
+    description: str
+
+GENERATE_PROMOTION_DIRECTIVE = '''Given the activity of the user and the description of the promotion, create the following:
+
+1. Determine what the value of the discount should be from within the provided range. Be discretionary, the amount should reflect how confident you are in the user's intent. Use round numbers that are appropriate for discounts if possible. Output ONLY THE NUMBER (no percent or dollar sign), and nothing else.
+2. Generate a title (20 CHARACTERS MAX) for the promotion that will appear in a popup in large text. Do not mention specific product names, just general categories, do not make assumptions outside of the description. Output the title and nothing else.
+3. Generate copy (50 CHARACTERS MAX) for the promotion that will appear in a popup underneath the title. Do not mention specific product names, just general categories, do not make assumptions outside of the description. Output the description and nothing else.'''
+def prompt_claude_promotion_context(session_id, promotion_id, directive=GENERATE_PROMOTION_DIRECTIVE):
+    client = _anthropic_client()
+    prompt_contents = promotion_to_prompt(session_id, promotion_id, directive=directive)
+
+    message = client.messages.create(
+        model="claude-3-opus-20240229",
+        max_tokens=1000,
+        temperature=0.0,
+        system=DEFAULT_SYSTEM_PROMPT,
+        messages=[
+            {"role": "user", "content": prompt_contents}
+        ],
+        response_model=GeneratedPromotion
+    )
+
+    assert isinstance(message, GeneratedPromotion)
+    #response = message.content[0].text
+    #return response
+    return message
 
 def pagevisit_to_root_domain(data):
     page_url = data['pageURL']

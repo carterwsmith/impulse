@@ -11,7 +11,7 @@ from sqlalchemy.orm import joinedload
 
 from constants import ACTIVE_SESSION_TIMEOUT_MINUTES, SOCKETIO_BACKGROUND_TASK_DELAY_SECONDS
 from commands.db_get_user_image_urls import get_user_image_urls
-from utils import pagevisit_to_root_domain, prompt_claude_session_context, promotion_id_to_dict, promotion_html_template, auth_user_id_to_promotion_dict_list, impulse_user_id_to_sessions_dict_list, auth_user_id_to_impulse_user_dict, url_to_root_domain, does_root_domain_exist
+from utils import pagevisit_to_root_domain, prompt_claude_session_context, promotion_id_to_dict, promotion_html_template, auth_user_id_to_promotion_dict_list, impulse_user_id_to_sessions_dict_list, auth_user_id_to_impulse_user_dict, url_to_root_domain, does_root_domain_exist, prompt_claude_promotion_context
 from postgres.db_utils import _db_session, get_user_row
 from postgres.schema import ImpulseUser, ImpulseSessions, PageVisits, MouseMovements, LLMResponses, Promotions, AuthUser
 
@@ -54,20 +54,39 @@ def prompt_claude_and_store_response(session_id, promotion=True):
     response = prompt_claude_session_context(session_id)
     timestamp = int(time.time())
     if promotion:
-        if 'no promotion' in response:
+        if response.id is None:
             # generate placeholder html, desired behavior is no popup
             promotion_html = "no promotion"
         else:
             try:
-                promotion_id_int = int(response)
+                promotion_id_int = response.id
                 promotion_dict = promotion_id_to_dict(promotion_id_int)
                 promotion_ai_bool = int(promotion_dict["is_ai_generated"])
                 if promotion_ai_bool:
                     # handle ai generating html logic here
-                    promotion_html = promotion_html_template("_", "placeholder", "_", "_")
+                    try:
+                        ai_promotion_obj = prompt_claude_promotion_context(session_id, promotion_id_int)
+                    except Exception as e:
+                        raise ValueError("Error while generating ai promotion content: {}".format(e))
+
+                    discount_num = None
+                    if ai_promotion_obj.discount % 1 == 0:
+                        discount_num = int(ai_promotion_obj.discount)
+                    elif promotion_dict['ai_discount_dollars_min']:
+                        discount_num = "{:.2f}".format(ai_promotion_obj.discount)
+                    else:
+                        discount_num = ai_promotion_obj.discount
+                    discount_var = f"{discount_num}% OFF" if promotion_dict['ai_discount_percent_min'] else f"${discount_num} OFF"
+                    discountcode_var = promotion_dict["discount_code"] if promotion_dict["discount_code"] else ""
+                    promotion_html = promotion_html_template(
+                        discount_var, 
+                        ai_promotion_obj.title, 
+                        ai_promotion_obj.description, 
+                        discount_code=discountcode_var,
+                    )
                 else:
                     # non ai generated html logic
-                    discount_var = f"{int(promotion_dict['discount_percent']) if promotion_dict['discount_percent'] % 1 == 0 else promotion_dict['discount_percent']}% OFF" if promotion_dict['discount_percent'] else f"${promotion_dict['discount_dollars']}"
+                    discount_var = f"{int(promotion_dict['discount_percent']) if promotion_dict['discount_percent'] % 1 == 0 else promotion_dict['discount_percent']}% OFF" if promotion_dict['discount_percent'] else f"${int(promotion_dict['discount_dollars']) if promotion_dict['discount_dollars'] % 1 == 0 else "{:.2f}".format(promotion_dict['discount_dollars'])} OFF"
                     discountcode_var = promotion_dict["discount_code"] if promotion_dict["discount_code"] else ""
 
                     promotion_html = promotion_html_template(
@@ -80,7 +99,7 @@ def prompt_claude_and_store_response(session_id, promotion=True):
                 raise ValueError("Error while generating html")
 
     session = _db_session()
-    llm_response = LLMResponses(session_id=session_id, response=response, recorded_at=timestamp, is_emitted=False, response_html=promotion_html)
+    llm_response = LLMResponses(session_id=session_id, response=response.id, recorded_at=timestamp, is_emitted=False, response_html=promotion_html)
     session.add(llm_response)
     session.commit()
     session.close()

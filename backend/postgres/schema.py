@@ -51,7 +51,7 @@ class LLMResponses(Base):
     __tablename__ = 'LLMResponses'
     id = Column(Integer, primary_key=True, autoincrement=True)
     session_id = Column(Text, ForeignKey('ImpulseSessions.id'))
-    response = Column(Text)
+    response = Column(Integer, nullable=True)
     recorded_at = Column(BigInteger)
     is_emitted = Column(Boolean, default=False)
     response_html = Column(Text, nullable=True)
