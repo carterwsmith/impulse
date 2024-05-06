@@ -100,7 +100,7 @@ function getMousePosition() {
 function loadGoogleFont() {
   var link3 = document.createElement('link');
   link3.rel = "stylesheet";
-  link3.href = "https://fonts.googleapis.com/css2?family=Kanit:wght@400;600&display=swap";
+  link3.href = "https://fonts.googleapis.com/css2?family=Jost:wght@400;600&display=swap";
 
   document.head.appendChild(link3);
 }
