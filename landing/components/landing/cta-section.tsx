@@ -7,10 +7,10 @@ import { motion, useAnimation, useInView } from "framer-motion";
 import {
   BarChart,
   ChevronRight,
-  File,
-  Globe,
-  HeartHandshake,
-  Rss,
+  Sparkles,
+  ScanBarcode,
+  ShoppingCart,
+  BadgeDollarSign,
   Shield,
 } from "lucide-react";
 import Link from "next/link";
@@ -18,19 +18,19 @@ import { useEffect, useId, useRef, useState } from "react";
 
 const tiles = [
   {
-    icon: <HeartHandshake className="size-full" />,
+    icon: <ShoppingCart className="size-full" />,
     bg: (
       <div className="pointer-events-none absolute left-1/2 top-1/2 h-1/2 w-1/2 -translate-x-1/2 -translate-y-1/2 overflow-visible rounded-full bg-gradient-to-r from-orange-600 via-rose-600 to-violet-600 opacity-70 blur-[20px] filter"></div>
     ),
   },
   {
-    icon: <Globe className="size-full" />,
+    icon: <ScanBarcode className="size-full" />,
     bg: (
       <div className="pointer-events-none absolute left-1/2 top-1/2 h-1/2 w-1/2 -translate-x-1/2 -translate-y-1/2 overflow-visible rounded-full bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 opacity-70 blur-[20px] filter"></div>
     ),
   },
   {
-    icon: <File className="size-full" />,
+    icon: <Sparkles className="size-full" />,
     bg: (
       <div className="pointer-events-none absolute left-1/2 top-1/2 h-1/2 w-1/2 -translate-x-1/2 -translate-y-1/2 overflow-visible rounded-full bg-gradient-to-r from-green-500 via-teal-500 to-emerald-600 opacity-70 blur-[20px] filter"></div>
     ),
@@ -42,7 +42,7 @@ const tiles = [
     ),
   },
   {
-    icon: <Rss className="size-full" />,
+    icon: <BadgeDollarSign className="size-full" />,
     bg: (
       <div className="pointer-events-none absolute left-1/2 top-1/2 h-1/2 w-1/2 -translate-x-1/2 -translate-y-1/2 overflow-visible rounded-full bg-gradient-to-r from-orange-600 via-rose-600 to-violet-600 opacity-70 blur-[20px] filter"></div>
     ),
@@ -172,26 +172,27 @@ export default function CallToActionSection() {
             </Marquee>
             <div className="absolute z-10">
               <div className="mx-auto size-24 rounded-[2rem] border bg-white/10 p-3 shadow-2xl backdrop-blur-md dark:bg-black/10 lg:size-32">
-                <HeartHandshake className="mx-auto size-16 text-black dark:text-white lg:size-24" />
+                <ShoppingCart className="mx-auto size-16 text-black dark:text-white lg:size-24" />
               </div>
               <div className="z-10 mt-4 flex flex-col items-center text-center text-primary">
                 <h1 className="text-3xl font-bold lg:text-4xl">
-                  Stop wasting time on design.
+                  Unlock conversions with Onpulse.
                 </h1>
                 <p className="mt-2">
-                  Start your 7-day free trial. No credit card required.
+                  Apply to join our beta below.
                 </p>
                 <Link
-                  href="#"
+                  href="https://forms.gle/JeH1JRvaMFFAP75GA"
+                  target="_blank"
                   className={cn(
                     buttonVariants({
                       size: "lg",
                       variant: "outline",
                     }),
-                    "group mt-4 rounded-[2rem] px-6"
+                    "group mt-4 rounded-[2rem] px-6 cursor-pointer z-1000"
                   )}
                 >
-                  Get Started
+                  Join our beta
                   <ChevronRight className="ml-1 size-4 transition-all duration-300 ease-out group-hover:translate-x-1" />
                 </Link>
               </div>

@@ -2,55 +2,55 @@ import { DiscordLogoIcon, TwitterLogoIcon } from "@radix-ui/react-icons";
 import Link from "next/link";
 
 const footerNavs = [
-  {
-    label: "Product",
-    items: [
-      {
-        href: "/",
-        name: "Email Collection",
-      },
-      {
-        href: "/pricing",
-        name: "Pricing",
-      },
-      {
-        href: "/faq",
-        name: "FAQ",
-      },
-    ],
-  },
+  // {
+  //   label: "Product",
+  //   items: [
+  //     {
+  //       href: "/",
+  //       name: "Email Collection",
+  //     },
+  //     {
+  //       href: "/pricing",
+  //       name: "Pricing",
+  //     },
+  //     {
+  //       href: "/faq",
+  //       name: "FAQ",
+  //     },
+  //   ],
+  // },
 
   {
-    label: "Community",
+    label: "Contact",
     items: [
+      // {
+      //   href: "/",
+      //   name: "Discord",
+      // },
+      // {
+      //   href: "/",
+      //   name: "Twitter",
+      // },
       {
-        href: "/",
-        name: "Discord",
-      },
-      {
-        href: "/",
-        name: "Twitter",
-      },
-      {
-        href: "mailto:hello@chatcollect.com",
+        href: "mailto:hello@onpulsehq.com",
         name: "Email",
       },
     ],
   },
-  {
-    label: "Legal",
-    items: [
-      {
-        href: "/terms",
-        name: "Terms",
-      },
+  // {
+  //   label: "Legal",
+  //   items: [
+  //     {
+  //       href: "/terms",
+  //       name: "Terms",
+  //     },
 
-      {
-        href: "/privacy",
-        name: "Privacy",
-      },
-    ],
-  },
+  //     {
+  //       href: "/privacy",
+  //       name: "Privacy",
+  //     },
+  //   ],
+  // },
 ];
 
 const footerSocials = [
@@ -74,14 +74,14 @@ export function SiteFooter() {
           <div className="mb-12 flex-col flex gap-4">
             <Link href="/" className="flex items-center gap-2">
               <img
-                src="https://magicui.design/icon.png"
+                src="/icon.png"
                 className="h-8 w-8 text-primary"
               />
               <span className="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">
-                Magic UI
+                Onpulse
               </span>
             </Link>
-            <p className="max-w-xs">The next generation UI library</p>
+            <p className="max-w-xs">Generative AI-driven promotions for ecommerce</p>
           </div>
           <div className="grid grid-cols-1 gap-8 sm:gap-10 sm:grid-cols-3">
             {footerNavs.map((nav) => (
@@ -108,7 +108,7 @@ export function SiteFooter() {
 
         <div className="flex flex-col sm:flex-row sm:flex sm:items-center sm:justify-between border-t xl:border rounded-md border-dashed border-neutral-700/20 py-4 px-8 gap-2">
           <div className="flex space-x-5 sm:justify-center sm:mt-0">
-            {footerSocials.map((social) => (
+            {/* {footerSocials.map((social) => (
               <Link
                 key={social.name}
                 href={social.href}
@@ -117,12 +117,12 @@ export function SiteFooter() {
                 {social.icon}
                 <span className="sr-only">{social.name}</span>
               </Link>
-            ))}
+            ))} */}
           </div>
           <span className="text-sm text-gray-500 sm:text-center dark:text-gray-400">
             Copyright © {new Date().getFullYear()}{" "}
             <Link href="/" className="cursor-pointer">
-              Magic UI
+              Onpulse
             </Link>
             . All Rights Reserved.
           </span>
