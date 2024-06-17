@@ -12,7 +12,7 @@ export default async function Page() {
       <InfoSection />
       <SphereMask />
       {/* <PricingSection /> */}
-      <CallToActionSection />
+      {/* <CallToActionSection /> */}
       <Particles
         className="absolute inset-0 -z-10"
         quantity={50}

@@ -81,7 +81,7 @@ export function SiteFooter() {
                 Onpulse
               </span>
             </Link>
-            <p className="max-w-xs">Generative AI-driven promotions for ecommerce</p>
+            <p className="max-w-xs">Realtime personalized promotions for ecommerce powered by Generative AI.</p>
           </div>
           <div className="grid grid-cols-1 gap-8 sm:gap-10 sm:grid-cols-3">
             {footerNavs.map((nav) => (
